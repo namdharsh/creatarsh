@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Creatarsh builds modern digital systems, web applications and AI-powered solutions for businesses.">
+  <title>Creatarsh — Digital Systems & Development</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="nav">
+    <a class="brand" href="#">CREATARSH<span>.</span></a>
+    <nav>
+      <a href="#services">Services</a>
+      <a href="#work">Work</a>
+      <a href="#process">Process</a>
+      <a href="#contact">Contact</a>
+    </nav>
+    <a class="nav-cta" href="#contact">Start a Project</a>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">SOFTWARE • DIGITAL SYSTEMS • AI</p>
+        <h1>We build digital systems that move businesses forward.</h1>
+        <p class="hero-text">Creatarsh designs and develops modern websites, web applications, business systems, automation and AI-powered products.</p>
+        <div class="actions">
+          <a class="button primary" href="#contact">Start a Project</a>
+          <a class="button secondary" href="#work">View Our Work</a>
+        </div>
+      </div>
+      <div class="hero-card">
+        <div class="orb"></div>
+        <div class="system-card">
+          <span>CREATARSH SYSTEM</span>
+          <strong>Idea → Design → Build → Launch</strong>
+          <small>One team. One system. One outcome.</small>
+        </div>
+      </div>
+    </section>
+
+    <section id="services" class="section">
+      <div class="section-head"><p class="eyebrow">WHAT WE BUILD</p><h2>Digital products made for real business problems.</h2></div>
+      <div id="servicesGrid" class="grid"></div>
+    </section>
+
+    <section id="work" class="section dark">
+      <div class="section-head"><p class="eyebrow">SELECTED WORK</p><h2>Systems, not just websites.</h2></div>
+      <div id="portfolioGrid" class="grid"></div>
+    </section>
+
+    <section id="process" class="section">
+      <div class="section-head"><p class="eyebrow">OUR PROCESS</p><h2>From idea to production.</h2></div>
+      <div class="steps">
+        <article><b>01</b><h3>Discover</h3><p>Understand the business, users, requirements and desired outcome.</p></article>
+        <article><b>02</b><h3>Design</h3><p>Create the structure, experience and visual system before development.</p></article>
+        <article><b>03</b><h3>Build</h3><p>Develop, integrate, test and iterate using modern engineering workflows.</p></article>
+        <article><b>04</b><h3>Launch</h3><p>Deploy, hand over, monitor and continue improving the system.</p></article>
+      </div>
+    </section>
+
+    <section id="contact" class="contact">
+      <p class="eyebrow">START A PROJECT</p>
+      <h2>Have a system in mind?</h2>
+      <p>Tell us what you want to build. We'll turn the requirement into a clear development plan.</p>
+      <form id="leadForm">
+        <input name="name" placeholder="Your name" required>
+        <input name="company" placeholder="Company">
+        <input name="email" type="email" placeholder="Email" required>
+        <input name="whatsapp" placeholder="WhatsApp">
+        <select name="projectType">
+          <option>Website</option><option>E-commerce</option><option>Web Application</option>
+          <option>Business Management System</option><option>AI / Automation</option><option>Custom Software</option>
+        </select>
+        <textarea name="requirements" placeholder="Tell us about your project" required></textarea>
+        <button class="button primary" type="submit">Send Project Brief</button>
+        <p id="formStatus"></p>
+      </form>
+    </section>
+  </main>
+
+  <footer><span>© Creatarsh</span><span>Digital Systems & Development</span></footer>
+  <script src="js/site.js"></script>
+</body>
+</html>
