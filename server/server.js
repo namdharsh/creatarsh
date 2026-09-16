@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -11,6 +12,13 @@ const app = express();
 app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
+// Optional single-service deployment: the API can also serve both web clients.
+const customerDir=path.join(__dirname,'..','customer');
+const managerDir=path.join(__dirname,'..','manager');
+app.use('/manager',express.static(managerDir));
+app.use('/customer',express.static(customerDir));
+app.get('/',(req,res)=>res.sendFile(path.join(customerDir,'index.html')));
+
 
 const serviceSchema = new mongoose.Schema({ title:{type:String,required:true,trim:true}, description:{type:String,default:''}, icon:{type:String,default:'✦'}, features:[String], startingPrice:{type:Number,default:0}, timeline:{type:String,default:''}, active:{type:Boolean,default:true}, order:{type:Number,default:0} }, {timestamps:true});
 const portfolioSchema = new mongoose.Schema({ title:{type:String,required:true,trim:true}, description:{type:String,default:''}, category:{type:String,default:'Project'}, client:{type:String,default:''}, technologies:[String], projectUrl:{type:String,default:''}, githubUrl:{type:String,default:''}, featured:{type:Boolean,default:false}, active:{type:Boolean,default:true}, order:{type:Number,default:0}, media:[String], results:[String] }, {timestamps:true});
@@ -22,6 +30,13 @@ const siteSchema = new mongoose.Schema({ key:{type:String,unique:true}, heroTitl
 const managerSchema = new mongoose.Schema({ username:{type:String,required:true,unique:true,trim:true,lowercase:true}, passwordHash:{type:String,required:true}, role:{type:String,default:'manager'}, active:{type:Boolean,default:true}, lastLoginAt:Date }, {timestamps:true});
 
 const Service=mongoose.model('Service',serviceSchema), Portfolio=mongoose.model('Portfolio',portfolioSchema), Lead=mongoose.model('Lead',leadSchema), Testimonial=mongoose.model('Testimonial',testimonialSchema), FAQ=mongoose.model('FAQ',faqSchema), Banner=mongoose.model('Banner',bannerSchema), Site=mongoose.model('Site',siteSchema), Manager=mongoose.model('Manager',managerSchema);
+const customerSchema=new mongoose.Schema({name:{type:String,required:true},email:{type:String,required:true,index:true},phone:String,company:String,passwordHash:String,active:{type:Boolean,default:true}},{timestamps:true});
+const projectSchema=new mongoose.Schema({projectId:{type:String,unique:true,index:true},customer:{type:mongoose.Schema.Types.ObjectId,ref:'Customer'},name:{type:String,required:true},description:String,status:{type:String,default:'Planning'},progress:{type:Number,default:0,min:0,max:100},value:{type:Number,default:0},startDate:Date,dueDate:Date,notes:String},{timestamps:true});
+const quoteSchema=new mongoose.Schema({quoteId:{type:String,unique:true,index:true},customer:{type:mongoose.Schema.Types.ObjectId,ref:'Customer'},project:{type:mongoose.Schema.Types.ObjectId,ref:'Project'},items:[{name:String,quantity:Number,price:Number}],discount:{type:Number,default:0},gst:{type:Number,default:18},subtotal:Number,total:Number,status:{type:String,default:'DRAFT'},validUntil:Date},{timestamps:true});
+const invoiceSchema=new mongoose.Schema({invoiceId:{type:String,unique:true,index:true},customer:{type:mongoose.Schema.Types.ObjectId,ref:'Customer'},project:{type:mongoose.Schema.Types.ObjectId,ref:'Project'},items:[{name:String,quantity:Number,price:Number}],subtotal:Number,gst:{type:Number,default:18},total:Number,status:{type:String,default:'UNPAID'},dueDate:Date},{timestamps:true});
+const paymentSchema=new mongoose.Schema({transactionId:{type:String,index:true},customer:{type:mongoose.Schema.Types.ObjectId,ref:'Customer'},project:{type:mongoose.Schema.Types.ObjectId,ref:'Project'},amount:{type:Number,required:true},gateway:String,status:{type:String,default:'PENDING'},paidAt:Date},{timestamps:true});
+const Customer=mongoose.model('Customer',customerSchema),Project=mongoose.model('Project',projectSchema),Quote=mongoose.model('Quote',quoteSchema),Invoice=mongoose.model('Invoice',invoiceSchema),Payment=mongoose.model('Payment',paymentSchema);
+
 const loginLimiter=rateLimit({windowMs:15*60*1000,limit:10,standardHeaders:true,legacyHeaders:false,message:{message:'Too many login attempts. Please try again later.'}});
 function signToken(m){if(!process.env.MANAGER_JWT_SECRET)throw new Error('MANAGER_JWT_SECRET is not configured');return jwt.sign({sub:m._id.toString(),username:m.username,role:m.role},process.env.MANAGER_JWT_SECRET,{expiresIn:'12h'});}
 function requireManager(req,res,next){try{const auth=req.headers.authorization||'';const token=auth.startsWith('Bearer ')?auth.slice(7):null;if(!token)return res.status(401).json({message:'Authentication required'});req.manager=jwt.verify(token,process.env.MANAGER_JWT_SECRET);next();}catch(e){res.status(401).json({message:'Invalid or expired session'});}}
@@ -49,7 +64,12 @@ app.get('/api/manager/leads',requireManager,async(req,res)=>{try{res.json(await 
 app.put('/api/manager/leads/:id',requireManager,async(req,res)=>{try{const d=safeBody(req.body,['status','notes']);const item=await Lead.findByIdAndUpdate(req.params.id,d,{new:true,runValidators:true});if(!item)return res.status(404).json({message:'Lead not found'});res.json(item);}catch(e){res.status(400).json({message:'Could not update lead'});}});
 app.get('/api/manager/site',requireManager,async(req,res)=>{res.json(await Site.findOne({key:'main'})||{});});
 app.put('/api/manager/site',requireManager,async(req,res)=>{try{const d=safeBody(req.body,['heroTitle','heroText','footerText','email','whatsapp','phone','instagram','linkedin','youtube','github','announcement']);const site=await Site.findOneAndUpdate({key:'main'},{$set:{...d,key:'main'}},{upsert:true,new:true,setDefaultsOnInsert:true});res.json(site);}catch(e){res.status(400).json({message:'Could not save website content'});}});
-app.get('/api/manager/stats',requireManager,async(req,res)=>{try{const [portfolio,services,leads,approvedTestimonials,openTickets]=await Promise.all([Portfolio.countDocuments({active:true}),Service.countDocuments({active:true}),Lead.countDocuments(),Testimonial.countDocuments({approved:true}),Promise.resolve(0)]);res.json({portfolio,services,leads,approvedTestimonials,openTickets});}catch(e){res.status(500).json({message:'Failed to load dashboard stats'});}});
+app.get('/api/manager/customers',requireManager,async(req,res)=>res.json(await Customer.find().select('-passwordHash').sort({createdAt:-1})));
+app.get('/api/manager/projects',requireManager,async(req,res)=>res.json(await Project.find().populate('customer','name email company').sort({createdAt:-1})));
+app.get('/api/manager/quotes',requireManager,async(req,res)=>res.json(await Quote.find().populate('customer','name email company').sort({createdAt:-1})));
+app.get('/api/manager/invoices',requireManager,async(req,res)=>res.json(await Invoice.find().populate('customer','name email company').sort({createdAt:-1})));
+app.get('/api/manager/payments',requireManager,async(req,res)=>res.json(await Payment.find().populate('customer','name email company').sort({createdAt:-1})));
+app.get('/api/manager/stats',requireManager,async(req,res)=>{try{const [portfolio,services,leads,customers,activeProjects,approvedTestimonials]=await Promise.all([Portfolio.countDocuments({active:true}),Service.countDocuments({active:true}),Lead.countDocuments(),Customer.countDocuments({active:true}),Project.countDocuments({status:{$nin:['Completed','Cancelled']}}),Testimonial.countDocuments({approved:true})]);res.json({portfolio,services,leads,customers,activeProjects,approvedTestimonials});}catch(e){res.status(500).json({message:'Failed to load dashboard stats'});}});
 
 async function seedInitialManager(){const username=String(process.env.MANAGER_INITIAL_USERNAME||'').trim().toLowerCase(),password=String(process.env.MANAGER_INITIAL_PASSWORD||'');if(!username||!password)return;if(password.length<8)throw new Error('MANAGER_INITIAL_PASSWORD must be at least 8 characters');if(await Manager.findOne({username}))return;await Manager.create({username,passwordHash:await bcrypt.hash(password,12),role:'manager'});console.log(`Initial manager created: ${username}`);}
 async function seedSite(){if(!await Site.findOne({key:'main'}))await Site.create({key:'main',heroTitle:'We build digital systems that move businesses forward.',heroText:'Creatarsh designs and develops modern websites, applications, business systems, automation and AI-powered products.',footerText:'Digital Systems & Development'});}

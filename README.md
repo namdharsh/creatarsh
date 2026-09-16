@@ -1,37 +1,27 @@
-# Creatarsh Website + Manager
+# Creatarsh — Agency Studio OS
 
-This package upgrades the existing Creatarsh website into a polished agency-style customer site with a database-backed manager CMS.
-
-## Included
-- Premium responsive customer website
-- Dynamic services
-- Dynamic portfolio with media URLs
-- Testimonials and FAQ CMS
-- Homepage/site content CMS
-- Announcement/banner CMS
-- Lead/project enquiry pipeline
-- Manager authentication with JWT
-- Manager dashboard and quick actions
-- Password change
-- MongoDB-backed API
-- Security middleware and login rate limiting
-- Architecture prepared for future projects, quotations, invoices, milestones, customer accounts and marketplace modules
+This build is the upgraded Creatarsh foundation for a premium digital development agency.
 
 ## Structure
-- `customer/` — public website
-- `manager/` — manager control panel
-- `server/` — Express + MongoDB API
+- `customer/` — premium public website
+- `manager/` — manager/studio control center
+- `server/` — Express + MongoDB API and optional single-service static hosting
 - `shared/` — architecture notes
 
-## Setup
+## Local setup
 1. Copy `server/.env.example` to `server/.env`.
-2. Add your MongoDB URI and a strong `MANAGER_JWT_SECRET`.
-3. Set `MANAGER_INITIAL_USERNAME` and `MANAGER_INITIAL_PASSWORD` for the first manager account.
-4. In `server/`, run `npm install` then `npm start`.
-5. If your deployed API URL is different, set `window.CREATARSH_API_URL` before the customer/manager scripts load, or update the default URL in the JS files.
+2. Set `MONGODB_URI`, `MANAGER_JWT_SECRET`, `MANAGER_INITIAL_USERNAME`, and `MANAGER_INITIAL_PASSWORD`.
+3. From `server/`: `npm install` then `npm start`.
+4. Public website: `http://localhost:5000/`
+5. Manager: `http://localhost:5000/manager/`
 
-## Important
-The uploaded production `.env` and Git metadata are intentionally not included in the replacement ZIP. Keep secrets in Render/environment settings rather than committing them.
+## Separate static hosting
+If customer and manager are hosted as separate static services, set `window.CREATARSH_API_URL` before `site.js` / `manager.js` loads. The default is `https://creatarsh.onrender.com/api` for the existing deployment.
 
-## Current implementation scope
-This version focuses on the highest-value foundation for launching Creatarsh: premium public presence + manager-controlled content + lead/CRM foundation. The next modules can be added to this codebase without replacing it: customer accounts, project workspaces, tasks, milestones, quotations, invoices, payments, files, messaging, support tickets, notifications and analytics.
+## Manager login troubleshooting
+If the login screen itself is blank, open browser DevTools → Console. This build keeps the login UI independent from API availability, so an API outage should show a connection error after submit rather than prevent the login page from rendering.
+
+If login says `Cannot connect to Creatarsh server`, verify the API URL and that the Render API service is running. If the API returns `Invalid username or password`, verify the manager credentials and MongoDB connection.
+
+## Security
+Do not commit `.env`, database credentials, JWT secrets, Razorpay secrets, or other private credentials.
