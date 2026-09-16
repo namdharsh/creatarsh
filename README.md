@@ -1,27 +1,34 @@
-# Creatarsh — Agency Studio OS
+# Creatarsh
 
-This build is the upgraded Creatarsh foundation for a premium digital development agency.
+Creatarsh is a premium digital development agency website with a manager Studio OS and customer portal.
 
-## Structure
-- `customer/` — premium public website
-- `manager/` — manager/studio control center
-- `server/` — Express + MongoDB API and optional single-service static hosting
-- `shared/` — architecture notes
+## Included
+- Multi-page customer website: Home, Services, Work, About, Contact, My Account
+- Persistent manager authentication across refresh/page reloads
+- Customer registration/login with persistent sessions
+- Customer profile and account dashboard
+- Customer projects, quotations, invoices and payment activity
+- Manager customer directory with customer details and last-login information
+- Lead capture linked to a logged-in customer when available
+- Manager CMS for services, portfolio, testimonials, FAQ, banners and website content
+- MongoDB-backed API
 
-## Local setup
-1. Copy `server/.env.example` to `server/.env`.
-2. Set `MONGODB_URI`, `MANAGER_JWT_SECRET`, `MANAGER_INITIAL_USERNAME`, and `MANAGER_INITIAL_PASSWORD`.
-3. From `server/`: `npm install` then `npm start`.
-4. Public website: `http://localhost:5000/`
-5. Manager: `http://localhost:5000/manager/`
+## Environment
+Create `server/.env` from `.env.example` and configure:
+- `MONGODB_URI`
+- `MANAGER_JWT_SECRET`
+- `CUSTOMER_JWT_SECRET` (optional; falls back to manager secret)
+- `MANAGER_INITIAL_USERNAME`
+- `MANAGER_INITIAL_PASSWORD`
 
-## Separate static hosting
-If customer and manager are hosted as separate static services, set `window.CREATARSH_API_URL` before `site.js` / `manager.js` loads. The default is `https://creatarsh.onrender.com/api` for the existing deployment.
+Never commit `.env` or secrets.
 
-## Manager login troubleshooting
-If the login screen itself is blank, open browser DevTools → Console. This build keeps the login UI independent from API availability, so an API outage should show a connection error after submit rather than prevent the login page from rendering.
+## Run
+```bash
+cd server
+npm install
+npm start
+```
+Then open `http://localhost:5000/` and `http://localhost:5000/manager/`.
 
-If login says `Cannot connect to Creatarsh server`, verify the API URL and that the Render API service is running. If the API returns `Invalid username or password`, verify the manager credentials and MongoDB connection.
-
-## Security
-Do not commit `.env`, database credentials, JWT secrets, Razorpay secrets, or other private credentials.
+For separate hosting, set `window.CREATARSH_API_URL` before the customer/manager scripts load.
