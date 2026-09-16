@@ -17,3 +17,11 @@
 @media(max-width:900px){.hero-particle-visual{min-height:430px}.particle-caption{right:1%;top:28%;font-size:9px}}
 @media(max-width:600px){.particle-stage{width:108%;margin-left:-4%}.hero-particle-visual{min-height:390px}.particle-caption{display:none}}
 @media(max-width:900px){.links{display:none}.menu{display:block}.hero-grid{grid-template-columns:1fr}.hero-visual{min-height:330px}.services,.testimonials,.account-grid{grid-template-columns:1fr 1fr}.work-grid{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.footer-grid{flex-direction:column}}@media(max-width:600px){.container{width:min(var(--max),calc(100% - 28px))}.nav-actions .btn.primary{display:none}.hero{padding:70px 0}.hero h1{font-size:54px}.section{padding:60px 0}.services,.testimonials,.account-grid{grid-template-columns:1fr}.stats{flex-wrap:wrap;gap:20px}.stat{padding-left:15px}.actions{flex-wrap:wrap}.section-head{align-items:start;flex-direction:column}.section-head h2{font-size:34px}.portal-row{flex-direction:column}.progress{width:100%}}
+
+/* Global particle field: the hero mark dissolves into a site-wide splash as the user scrolls. */
+#particleLogo.global-particles{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;z-index:0!important;pointer-events:none!important;display:block!important;opacity:.86}
+body>header,body>main,body>footer{position:relative;z-index:1}
+.nav{z-index:20}
+.hero{isolation:isolate}
+.hero-grid,.section,.page-head,.auth-wrap{position:relative;z-index:1}
+@media(max-width:600px){#particleLogo.global-particles{opacity:.62}}
