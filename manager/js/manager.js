@@ -1,6 +1,6 @@
 const defaultApi=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'':'https://creatarsh.onrender.com';
 const API=(window.CREATARSH_API_URL||defaultApi).replace(/\/$/,'')+'/api';
-const state={page:'overview',data:{}};const $=s=>document.querySelector(s);const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+const state={page:'overview',data:{}};const $=s=>document.querySelector(s);const $$=s=>Array.from(document.querySelectorAll(s));const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const token=()=>localStorage.getItem('cr_manager_token');const manager=()=>{try{return JSON.parse(localStorage.getItem('cr_manager')||'null')}catch{return null}};
 async function api(path,opt={}){const h={'Content-Type':'application/json',...(opt.headers||{})};if(token())h.Authorization='Bearer '+token();const r=await fetch(API+path,{...opt,headers:h});let d={};try{d=await r.json()}catch{}if(!r.ok){const e=new Error(d.message||`Request failed (${r.status})`);e.status=r.status;throw e}return d}
 function logout(){localStorage.removeItem('cr_manager_token');localStorage.removeItem('cr_manager');renderLogin()}

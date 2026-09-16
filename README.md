@@ -33,3 +33,6 @@ Open `http://localhost:5000/` and `http://localhost:5000/manager/`.
 Create `server/.env` from `.env.example`. Never commit `.env`.
 
 Customer and manager assets use relative paths so the same files work both on separate Render static services and when served by the Express server. If the customer and manager static files are hosted separately from the API, define `window.CREATARSH_API_URL` before `site.js` / `manager.js` loads.
+
+## Manager repair
+The manager UI uses its own stylesheet and script with a defined query-selector helper; this build preserves the manager UI while fixing the runtime boot error that prevented navigation from initializing.
