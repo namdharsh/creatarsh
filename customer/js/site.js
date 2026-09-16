@@ -1,35 +1,11 @@
-const API = 'http://localhost:5000/api';
-
-const fallbackServices = [
-  ['Web Development','High-performance business websites and custom web experiences.'],
-  ['Web Applications','Scalable dashboards, portals and workflow-driven applications.'],
-  ['Business Systems','Custom management systems that replace manual processes.'],
-  ['E-commerce','Modern stores with catalogues, orders and business management.'],
-  ['AI & Automation','AI-powered workflows, assistants and business automation.'],
-  ['Custom Software','Purpose-built digital products for unique requirements.']
-];
-
-function renderServices(items){
-  document.querySelector('#servicesGrid').innerHTML = items.map((x,i)=>`<article class="card"><span>0${i+1}</span><h3>${x.title||x[0]}</h3><p>${x.description||x[1]}</p></article>`).join('');
-}
-function renderPortfolio(items){
-  document.querySelector('#portfolioGrid').innerHTML = items.length
-    ? items.map(x=>`<article class="card"><span>${x.category||'Project'}</span><h3>${x.title}</h3><p>${x.description||''}</p></article>`).join('')
-    : '<article class="card"><span>CREATARSH LAB</span><h3>Portfolio is being prepared.</h3><p>Our first case studies will appear here.</p></article>';
-}
-renderServices(fallbackServices); renderPortfolio([]);
-
-fetch(API+'/public/services').then(r=>r.ok?r.json():Promise.reject()).then(renderServices).catch(()=>{});
-fetch(API+'/public/portfolio').then(r=>r.ok?r.json():Promise.reject()).then(renderPortfolio).catch(()=>{});
-
-document.querySelector('#leadForm').addEventListener('submit', async e=>{
-  e.preventDefault();
-  const status=document.querySelector('#formStatus');
-  const data=Object.fromEntries(new FormData(e.target));
-  try{
-    const r=await fetch(API+'/public/leads',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
-    if(!r.ok) throw new Error();
-    status.textContent='Thanks — your project brief has been received.';
-    e.target.reset();
-  }catch(err){status.textContent='Demo mode: connect the Creatarsh API to submit this form.';}
-});
+const API = window.CREATARSH_API_URL || 'https://creatarsh.onrender.com/api';
+const fallback={services:[['Website Development','High-performance business websites and modern digital experiences.'],['Web Applications','Scalable dashboards, portals and workflow-driven applications.'],['Business Systems','Custom systems that replace manual work and connect operations.'],['E-commerce','Conversion-focused stores with catalogues, orders and management.'],['AI & Automation','AI-powered workflows, assistants and intelligent automation.'],['Custom Software','Purpose-built digital products for unique requirements.']],portfolio:[],testimonials:[],faqs:[]};
+const $=s=>document.querySelector(s), esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+function renderServices(items){$('#servicesGrid').innerHTML=items.map((x,i)=>`<article class="service-card"><div class="service-top"><span>${String(i+1).padStart(2,'0')}</span><b>${esc(x.icon||'✦')}</b></div><h3>${esc(x.title||x[0])}</h3><p>${esc(x.description||x[1])}</p><div class="service-foot"><span>${x.timeline?esc(x.timeline):'Custom scope'}</span><span>↗</span></div></article>`).join('');}
+function renderPortfolio(items){$('#portfolioGrid').innerHTML=items.length?items.map((x,i)=>{const media=x.media?.[0];return `<article class="project-card"><div class="project-media" ${media?`style="background-image:url('${esc(media)}')"`:''}><span>${esc(x.category||'PROJECT')}</span><b>${String(i+1).padStart(2,'0')}</b></div><div class="project-info"><div><h3>${esc(x.title)}</h3><p>${esc(x.description||'')}</p></div><div class="tags">${(x.technologies||[]).slice(0,4).map(t=>`<span>${esc(t)}</span>`).join('')}</div></div></article>`}).join(''):'<article class="project-card empty-project"><div class="project-media"><span>CREATARSH LAB</span><b>01</b></div><div class="project-info"><h3>Our first case studies are coming.</h3><p>We are building a portfolio of systems, products and digital experiences.</p></div></article>';}
+function renderTestimonials(items){$('#testimonialGrid').innerHTML=items.length?items.map(x=>`<article><div class="stars">${'★'.repeat(Math.min(5,Math.max(1,x.rating||5)))}</div><blockquote>“${esc(x.quote)}”</blockquote><footer><b>${esc(x.name)}</b><span>${esc([x.role,x.company].filter(Boolean).join(' · '))}</span></footer></article>`).join(''):'<article><div class="stars">★★★★★</div><blockquote>“Great digital products start with clear thinking and strong execution.”</blockquote><footer><b>Creatarsh</b><span>Digital Development</span></footer></article>';}
+function renderFaqs(items){$('#faqList').innerHTML=items.length?items.map(x=>`<details><summary>${esc(x.question)}<span>+</span></summary><p>${esc(x.answer)}</p></details>`).join(''):['What kind of projects does Creatarsh build?','How does a project start?','Can you build a complete business management system?'].map((q,i)=>`<details><summary>${q}<span>+</span></summary><p>${['We build websites, web applications, mobile apps, e-commerce platforms, business systems and AI-powered workflows.','Send a project brief and we will review the requirement, clarify the scope and prepare the next steps.','Yes. We can design and develop custom systems around your actual business workflow.'][i]}</p></details>`).join('');}
+async function load(){try{const r=await fetch(API+'/public/content');if(!r.ok)throw 0;const d=await r.json();renderServices(d.services?.length?d.services:fallback.services);renderPortfolio(d.portfolio||[]);renderTestimonials(d.testimonials||[]);renderFaqs(d.faqs||[]);const s=d.site||{};if(s.heroTitle)document.querySelector('.hero h1').innerHTML=esc(s.heroTitle).replace(/(digital reality\.)/i,'<em>$1</em>');if(s.heroText)document.querySelector('.hero-text').textContent=s.heroText;if(s.announcement){$('#announcement').textContent=s.announcement;$('#announcement').classList.remove('hidden');}if(s.email){$('#emailLink').href=`mailto:${s.email}`;$('#emailLink').textContent=s.email;}if(s.footerText)$('#footerText').textContent=s.footerText;}catch(e){renderServices(fallback.services);renderPortfolio([]);renderTestimonials([]);renderFaqs([]);}}
+$('#leadForm').addEventListener('submit',async e=>{e.preventDefault();const status=$('#formStatus'),button=e.target.querySelector('button');status.textContent='Sending…';button.disabled=true;try{const r=await fetch(API+'/public/leads',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});const d=await r.json();if(!r.ok)throw new Error(d.message||'Could not submit');status.textContent=`Project brief received · Enquiry ${d.enquiryId}`;e.target.reset();}catch(err){status.textContent='Could not connect right now. Please try again or email hello@creatarsh.in.';}finally{button.disabled=false;}});
+$('#menuBtn').addEventListener('click',()=>document.querySelector('.nav nav').classList.toggle('open'));
+$('#year').textContent=new Date().getFullYear();load();
