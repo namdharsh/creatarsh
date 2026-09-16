@@ -32,4 +32,4 @@ Open `http://localhost:5000/` and `http://localhost:5000/manager/`.
 
 Create `server/.env` from `.env.example`. Never commit `.env`.
 
-If the customer and manager static files are hosted separately from the API, define `window.CREATARSH_API_URL` before `site.js` / `manager.js` loads. When served by this Express server, relative `/api` is used automatically.
+Customer and manager assets use relative paths so the same files work both on separate Render static services and when served by the Express server. If the customer and manager static files are hosted separately from the API, define `window.CREATARSH_API_URL` before `site.js` / `manager.js` loads.

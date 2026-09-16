@@ -35,7 +35,7 @@ app.get('/work', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'work.html')
 app.get('/about', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'about.html')));
 app.get('/contact', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'contact.html')));
 app.get('/faq', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'faq.html')));
-app.get('/manager', (req, res) => res.sendFile(path.join(MANAGER_DIR, 'index.html')));
+app.get('/manager', (req, res) => res.redirect('/manager/'));
 
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 100, standardHeaders: true, legacyHeaders: false });
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false });
@@ -105,14 +105,6 @@ async function seed() {
   ]);
 }
 setTimeout(seed, 2500);
-
-// ---------- Static / pages ----------
-app.use('/manager', express.static(MANAGER_DIR));
-app.use('/customer', express.static(CUSTOMER_DIR));
-app.use(express.static(CUSTOMER_DIR));
-app.get('/', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'index.html')));
-for (const page of ['services', 'work', 'about', 'contact', 'account', 'login', 'register', 'faq']) app.get(`/${page}`, (req, res) => res.sendFile(path.join(CUSTOMER_DIR, `${page}.html`)));
-app.get('/manager/*', (req, res) => res.sendFile(path.join(MANAGER_DIR, 'index.html')));
 
 // ---------- Public API ----------
 app.get('/api/health', (req, res) => res.json({ ok: true, database: dbReady, service: 'creatarsh-api' }));
