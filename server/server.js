@@ -22,6 +22,21 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '8mb' }));
 app.use(express.urlencoded({ extended: true, limit: '8mb' }));
 
+// Serve the customer website and manager assets from the same Express service.
+// This keeps CSS/JS/images available when the API and web app are deployed together.
+app.use('/customer', express.static(CUSTOMER_DIR, { extensions: ['html'] }));
+app.use('/manager', express.static(MANAGER_DIR, { extensions: ['html'] }));
+app.get('/', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'index.html')));
+app.get('/login', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'login.html')));
+app.get('/register', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'register.html')));
+app.get('/account', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'account.html')));
+app.get('/services', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'services.html')));
+app.get('/work', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'work.html')));
+app.get('/about', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'about.html')));
+app.get('/contact', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'contact.html')));
+app.get('/faq', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'faq.html')));
+app.get('/manager', (req, res) => res.sendFile(path.join(MANAGER_DIR, 'index.html')));
+
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 100, standardHeaders: true, legacyHeaders: false });
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false });
 app.use('/api/', limiter);
