@@ -1,27 +1,26 @@
-# Creatarsh
+# Creatarsh — Agency System
 
-Creatarsh is a premium digital development agency website with a manager Studio OS and customer portal.
+Premium dark Creatarsh customer website + manager Studio OS, backed by a MongoDB API.
 
-## Included
-- Multi-page customer website: Home, Services, Work, About, Contact, My Account
-- Persistent manager authentication across refresh/page reloads
-- Customer registration/login with persistent sessions
-- Customer profile and account dashboard
-- Customer projects, quotations, invoices and payment activity
-- Manager customer directory with customer details and last-login information
-- Lead capture linked to a logged-in customer when available
-- Manager CMS for services, portfolio, testimonials, FAQ, banners and website content
-- MongoDB-backed API
+## Customer
+- Multi-page website: Home, Services, Work, About, Contact
+- Customer registration/login
+- Persistent JWT login across refresh and page changes
+- My Account portal with projects, quotations, invoices and payments
+- Logged-in project enquiries linked to the customer
 
-## Environment
-Create `server/.env` from `.env.example` and configure:
-- `MONGODB_URI`
-- `MANAGER_JWT_SECRET`
-- `CUSTOMER_JWT_SECRET` (optional; falls back to manager secret)
-- `MANAGER_INITIAL_USERNAME`
-- `MANAGER_INITIAL_PASSWORD`
-
-Never commit `.env` or secrets.
+## Manager
+- Persistent manager login
+- Dashboard metrics
+- Leads & CRM
+- Customers directory with registration/last-login details
+- Projects and progress
+- Quotations
+- Invoices
+- Payments
+- Website CMS
+- Services, Portfolio, Testimonials, FAQ and Banners CRUD
+- Settings
 
 ## Run
 ```bash
@@ -29,6 +28,8 @@ cd server
 npm install
 npm start
 ```
-Then open `http://localhost:5000/` and `http://localhost:5000/manager/`.
+Open `http://localhost:5000/` and `http://localhost:5000/manager/`.
 
-For separate hosting, set `window.CREATARSH_API_URL` before the customer/manager scripts load.
+Create `server/.env` from `.env.example`. Never commit `.env`.
+
+If the customer and manager static files are hosted separately from the API, define `window.CREATARSH_API_URL` before `site.js` / `manager.js` loads. When served by this Express server, relative `/api` is used automatically.
