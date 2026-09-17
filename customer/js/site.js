@@ -10,6 +10,27 @@ async function api(path,opt={}){const h={'Content-Type':'application/json',...(o
 function nav(){const c=customer();const account=$('#accountLink');if(account){account.textContent=c?'My Account':'Client Login';account.href=c?'/account':'/login';account.classList.toggle('active',location.pathname.includes('account')||location.pathname.includes('login'))}}
 function shell(){nav();const y=$('#year');if(y)y.textContent=new Date().getFullYear();}
 async function content(){try{return await api('/public/content')}catch{return {services:[],portfolio:[],testimonials:[],faqs:[],site:{}}}}
+function renderBanners(d){
+  const slider=$('#bannerSlider'),track=$('#bannerTrack'),dots=$('#bannerDots');
+  if(!slider||!track||!dots)return;
+  const banners=(d.banners||[]).filter(x=>x.active!==false).sort((a,b)=>(a.order||0)-(b.order||0));
+  if(!banners.length){slider.parentElement.parentElement.style.display='none';return;}
+  track.innerHTML=banners.map((x,i)=>`<article class="banner-slide" data-index="${i}" style="${x.image?`background-image:linear-gradient(90deg,rgba(5,9,8,.94) 0%,rgba(5,9,8,.72) 45%,rgba(5,9,8,.15) 100%),url(\"${esc(x.image)}\")`:''}">
+    <div class="banner-content">${x.eyebrow?`<span class="eyebrow">${esc(x.eyebrow)}</span>`:''}${x.title?`<h2>${esc(x.title)}</h2>`:''}${x.text?`<p>${esc(x.text)}</p>`:''}${x.ctaText?`<a class="btn primary" href="${esc(x.ctaUrl||'/contact')}">${esc(x.ctaText)} ↗</a>`:''}</div>
+  </article>`).join('');
+  dots.innerHTML=banners.map((_,i)=>`<button type="button" class="banner-dot${i===0?' active':''}" data-banner="${i}" aria-label="Go to banner ${i+1}"></button>`).join('');
+  let index=0,timer;
+  const go=i=>{index=(i+banners.length)%banners.length;track.style.transform=`translate3d(-${index*100}%,0,0)`;$$('.banner-dot').forEach((b,n)=>b.classList.toggle('active',n===index));};
+  const start=()=>{clearInterval(timer);if(banners.length>1)timer=setInterval(()=>go(index+1),3000)};
+  $('#bannerSlider').querySelector('.banner-prev').onclick=()=>{go(index-1);start()};
+  $('#bannerSlider').querySelector('.banner-next').onclick=()=>{go(index+1);start()};
+  $$('.banner-dot').forEach(b=>b.onclick=()=>{go(Number(b.dataset.banner));start()});
+  slider.addEventListener('mouseenter',()=>clearInterval(timer));
+  slider.addEventListener('mouseleave',start);
+  slider.addEventListener('touchstart',()=>clearInterval(timer),{passive:true});
+  slider.addEventListener('touchend',start,{passive:true});
+  go(0);start();
+}
 function renderHome(d){const s=d.site||{};if($('.hero-title')&&s.heroTitle) $('.hero-title').innerHTML=esc(s.heroTitle).replace(/\n/g,'<br>');if($('.hero-text')&&s.heroText)$('.hero-text').textContent=s.heroText;const services=$('#serviceGrid');if(services)services.innerHTML=(d.services||[]).slice(0,6).map(x=>`<article class="card"><div class="icon">${esc(x.icon||'✦')}</div><h3>${esc(x.title)}</h3><p>${esc(x.description)}</p><div class="price">${x.startingPrice?'Starting ₹'+Number(x.startingPrice).toLocaleString('en-IN'):''}</div></article>`).join('')||'<div class="empty">Services will appear here.</div>';const work=$('#workGrid');if(work)work.innerHTML=(d.portfolio||[]).slice(0,4).map(x=>`<article class="card work-card"><div class="work-media">${x.media?.[0]?`<img src="${esc(x.media[0])}" alt="${esc(x.title)}" style="width:100%;height:100%;object-fit:cover">`:'CREATARSH'}</div><div class="work-body"><span class="tag">${esc(x.category||'Project')}</span><h3>${esc(x.title)}</h3><p>${esc(x.description||'')}</p></div></article>`).join('')||'<div class="empty">Portfolio projects will appear here.</div>';const testimonials=$('#testimonialGrid');if(testimonials)testimonials.innerHTML=(d.testimonials||[]).slice(0,3).map(x=>`<article class="card"><div class="quote">“${esc(x.quote||'Great experience.') }”</div><p style="margin-top:20px">${esc(x.name)} · ${esc(x.company||'Client')}</p></article>`).join('')||'<div class="empty">Client stories will appear here.</div>';}
 function renderServices(d){const el=$('#allServices');if(!el)return;el.innerHTML=(d.services||[]).map(x=>`<article class="card"><div class="icon">${esc(x.icon||'✦')}</div><h3>${esc(x.title)}</h3><p>${esc(x.description)}</p><div class="price">${x.startingPrice?'From ₹'+Number(x.startingPrice).toLocaleString('en-IN'):''} ${x.timeline?' · '+esc(x.timeline):''}</div>${x.features?.length?`<ul class="muted">${x.features.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:''}<a class="btn" style="margin-top:18px" href="/contact">Discuss this service ↗</a></article>`).join('')||'<div class="empty">No services published yet.</div>'}
 function renderWork(d){const el=$('#allWork');if(!el)return;el.innerHTML=(d.portfolio||[]).map(x=>`<article class="card work-card"><div class="work-media">${x.media?.[0]?`<img src="${esc(x.media[0])}" alt="${esc(x.title)}" style="width:100%;height:100%;object-fit:cover">`:'CREATARSH'}</div><div class="work-body"><span class="tag">${esc(x.category||'Project')}</span><h3>${esc(x.title)}</h3><p>${esc(x.description||'')}</p>${x.technologies?.length?`<p class="muted" style="margin-top:12px">${x.technologies.map(esc).join(' · ')}</p>`:''}</div></article>`).join('')||'<div class="empty">No portfolio projects published yet.</div>'}
@@ -225,5 +246,5 @@ function initParticleLogo(){
   reducedMotion.addEventListener?.('change',()=>{build();start();});
 }
 
-async function init(){shell();const page=document.body.dataset.page;const d=await content();if(page==='home'){renderHome(d);initParticleLogo();}if(page==='services')renderServices(d);if(page==='work')renderWork(d);if(page==='contact')setupLead();if(page==='faq')renderFaq(d);if(page==='account')account();if(page==='login')authPage('login');if(page==='register')authPage('register');}
+async function init(){shell();const page=document.body.dataset.page;const d=await content();if(page==='home'){renderHome(d);renderBanners(d);initParticleLogo();}if(page==='services')renderServices(d);if(page==='work')renderWork(d);if(page==='contact')setupLead();if(page==='faq')renderFaq(d);if(page==='account')account();if(page==='login')authPage('login');if(page==='register')authPage('register');}
 init();
