@@ -15,21 +15,54 @@ function renderBanners(d){
   if(!slider||!track||!dots)return;
   const banners=(d.banners||[]).filter(x=>x.active!==false).sort((a,b)=>(a.order||0)-(b.order||0));
   if(!banners.length){slider.parentElement.parentElement.style.display='none';return;}
-  track.innerHTML=banners.map((x,i)=>`<article class="banner-slide" data-index="${i}" style="${x.image?`background-image:linear-gradient(90deg,rgba(5,9,8,.94) 0%,rgba(5,9,8,.72) 45%,rgba(5,9,8,.15) 100%),url(\"${esc(x.image)}\")`:''}">
+
+  const slideHtml=(x,i)=>`<article class="banner-slide" data-index="${i}">
+    ${x.image?`<img class="banner-media" src="${esc(String(x.image).trim())}" alt="${esc(x.title||'Featured banner')}" loading="${i===0?'eager':'lazy'}" referrerpolicy="no-referrer">`:''}
+    <div class="banner-overlay" aria-hidden="true"></div>
     <div class="banner-content">${x.eyebrow?`<span class="eyebrow">${esc(x.eyebrow)}</span>`:''}${x.title?`<h2>${esc(x.title)}</h2>`:''}${x.text?`<p>${esc(x.text)}</p>`:''}${x.ctaText?`<a class="btn primary" href="${esc(x.ctaUrl||'/contact')}">${esc(x.ctaText)} ↗</a>`:''}</div>
-  </article>`).join('');
+  </article>`;
+
+  // Clone the first/last banner so moving from the last banner back to the first
+  // is visually seamless instead of jumping backwards.
+  const looped=banners.length>1?[banners[banners.length-1],...banners,banners[0]]:banners;
+  track.innerHTML=looped.map((x,i)=>slideHtml(x,i)).join('');
   dots.innerHTML=banners.map((_,i)=>`<button type="button" class="banner-dot${i===0?' active':''}" data-banner="${i}" aria-label="Go to banner ${i+1}"></button>`).join('');
-  let index=0,timer;
-  const go=i=>{index=(i+banners.length)%banners.length;track.style.transform=`translate3d(-${index*100}%,0,0)`;$$('.banner-dot').forEach((b,n)=>b.classList.toggle('active',n===index));};
-  const start=()=>{clearInterval(timer);if(banners.length>1)timer=setInterval(()=>go(index+1),3000)};
-  $('#bannerSlider').querySelector('.banner-prev').onclick=()=>{go(index-1);start()};
-  $('#bannerSlider').querySelector('.banner-next').onclick=()=>{go(index+1);start()};
+
+  let physicalIndex=banners.length>1?1:0;
+  let timer;
+  let moving=false;
+
+  const updateDots=()=>$$('.banner-dot').forEach((b,n)=>b.classList.toggle('active',n===((physicalIndex-1+banners.length)%banners.length)));
+  const apply=animate=>{
+    track.style.transition=animate?'transform .65s cubic-bezier(.22,.61,.36,1)':'none';
+    track.style.transform=`translate3d(-${physicalIndex*100}%,0,0)`;
+    updateDots();
+  };
+  const go=i=>{
+    if(banners.length===1)return;
+    physicalIndex=i+1;
+    moving=true;
+    apply(true);
+  };
+  const start=()=>{clearInterval(timer);if(banners.length>1)timer=setInterval(()=>go((physicalIndex-1+banners.length+1)%banners.length),3000)};
+
+  track.addEventListener('transitionend',e=>{
+    if(e.propertyName!=='transform'||!moving||banners.length<2)return;
+    moving=false;
+    if(physicalIndex===0){physicalIndex=banners.length;apply(false)}
+    else if(physicalIndex===banners.length+1){physicalIndex=1;apply(false)}
+  });
+
+  slider.querySelector('.banner-prev').onclick=()=>{go((physicalIndex-2+banners.length)%banners.length);start()};
+  slider.querySelector('.banner-next').onclick=()=>{go((physicalIndex+banners.length)%banners.length);start()};
   $$('.banner-dot').forEach(b=>b.onclick=()=>{go(Number(b.dataset.banner));start()});
   slider.addEventListener('mouseenter',()=>clearInterval(timer));
   slider.addEventListener('mouseleave',start);
   slider.addEventListener('touchstart',()=>clearInterval(timer),{passive:true});
   slider.addEventListener('touchend',start,{passive:true});
-  go(0);start();
+
+  apply(false);
+  start();
 }
 function renderHome(d){const s=d.site||{};if($('.hero-title')&&s.heroTitle) $('.hero-title').innerHTML=esc(s.heroTitle).replace(/\n/g,'<br>');if($('.hero-text')&&s.heroText)$('.hero-text').textContent=s.heroText;const services=$('#serviceGrid');if(services)services.innerHTML=(d.services||[]).slice(0,6).map(x=>`<article class="card"><div class="icon">${esc(x.icon||'✦')}</div><h3>${esc(x.title)}</h3><p>${esc(x.description)}</p><div class="price">${x.startingPrice?'Starting ₹'+Number(x.startingPrice).toLocaleString('en-IN'):''}</div></article>`).join('')||'<div class="empty">Services will appear here.</div>';const work=$('#workGrid');if(work)work.innerHTML=(d.portfolio||[]).slice(0,4).map(x=>`<article class="card work-card"><div class="work-media">${x.media?.[0]?`<img src="${esc(x.media[0])}" alt="${esc(x.title)}" style="width:100%;height:100%;object-fit:cover">`:'CREATARSH'}</div><div class="work-body"><span class="tag">${esc(x.category||'Project')}</span><h3>${esc(x.title)}</h3><p>${esc(x.description||'')}</p></div></article>`).join('')||'<div class="empty">Portfolio projects will appear here.</div>';const testimonials=$('#testimonialGrid');if(testimonials)testimonials.innerHTML=(d.testimonials||[]).slice(0,3).map(x=>`<article class="card"><div class="quote">“${esc(x.quote||'Great experience.') }”</div><p style="margin-top:20px">${esc(x.name)} · ${esc(x.company||'Client')}</p></article>`).join('')||'<div class="empty">Client stories will appear here.</div>';}
 function renderServices(d){const el=$('#allServices');if(!el)return;el.innerHTML=(d.services||[]).map(x=>`<article class="card"><div class="icon">${esc(x.icon||'✦')}</div><h3>${esc(x.title)}</h3><p>${esc(x.description)}</p><div class="price">${x.startingPrice?'From ₹'+Number(x.startingPrice).toLocaleString('en-IN'):''} ${x.timeline?' · '+esc(x.timeline):''}</div>${x.features?.length?`<ul class="muted">${x.features.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:''}<a class="btn" style="margin-top:18px" href="/contact">Discuss this service ↗</a></article>`).join('')||'<div class="empty">No services published yet.</div>'}
