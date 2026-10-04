@@ -48,6 +48,8 @@ app.get('/services', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'service
 // Service detail pages: support direct navigation, refreshes and the plural alias.
 app.get('/service', (req, res) => res.redirect('/services'));
 app.get(['/service/:slug', '/services/:slug'], (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'service.html')));
+// Static fallback for service URLs. This also makes direct navigation resilient if a host/rewrite layer bypasses the dynamic route.
+app.use('/service', express.static(path.join(CUSTOMER_DIR, 'service-routes'), { extensions: ['html'] }));
 app.get('/work', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'work.html')));
 app.use('/portfolio', express.static(path.join(CUSTOMER_DIR, 'portfolio'), { extensions: ['html'] }));
 app.get('/about', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'about.html')));

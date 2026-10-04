@@ -1,4 +1,4 @@
-const defaultApi=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'':'https://creatarsh.onrender.com';
+const defaultApi='';
 const API=(window.CREATARSH_API_URL||defaultApi).replace(/\/$/,'')+'/api';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const slugifyClient=v=>String(v||'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
@@ -21,7 +21,17 @@ function nav(){
   }
 }
 function shell(){nav();const y=$('#year');if(y)y.textContent=new Date().getFullYear();}
-async function content(){try{return await api('/public/content')}catch{return {services:[],portfolio:[],testimonials:[],faqs:[],site:{}}}}
+async function content(){
+  try{return await api('/public/content')}
+  catch{return {services:[
+    {title:'Web Development',slug:'web-development',description:'Fast, scalable websites and web applications.',icon:'</>',features:['Responsive UI','Modern architecture','Deployment'],startingPrice:15000,timeline:'1–4 weeks'},
+    {title:'App Development',slug:'app-development',description:'Cross-platform mobile apps built around your workflow.',icon:'▣',features:['Android & iOS','API integration','App launch'],startingPrice:25000,timeline:'3–8 weeks'},
+    {title:'UI/UX Design',slug:'ui-ux-design',description:'Clear, conversion-focused interfaces with a premium visual system.',icon:'✦',features:['Wireframes','UI system','Prototype'],startingPrice:8000,timeline:'1–2 weeks'},
+    {title:'Branding & Design',slug:'branding-design',description:'Identity, social creatives and digital brand assets.',icon:'◇',features:['Logo system','Brand kit','Social assets'],startingPrice:5000,timeline:'3–10 days'},
+    {title:'E-commerce',slug:'e-commerce',description:'Complete stores with payments, inventory and admin systems.',icon:'□',features:['Storefront','Payments','Manager panel'],startingPrice:30000,timeline:'3–8 weeks'},
+    {title:'Custom Systems',slug:'custom-systems',description:'Business software tailored to the way your team works.',icon:'⌘',features:['Custom workflow','Dashboard','Integrations'],startingPrice:40000,timeline:'4–12 weeks'}
+  ],portfolio:[],testimonials:[],faqs:[],site:{}}}
+}
 function renderBanners(d){
   const slider=$('#bannerSlider'),track=$('#bannerTrack'),dots=$('#bannerDots');
   if(!slider||!track||!dots)return;
