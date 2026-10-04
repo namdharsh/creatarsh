@@ -47,6 +47,7 @@ app.get('/account', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'account.
 app.get('/services', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'services.html')));
 app.get('/service/:slug', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'service.html')));
 app.get('/work', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'work.html')));
+app.use('/portfolio', express.static(path.join(CUSTOMER_DIR, 'portfolio'), { extensions: ['html'] }));
 app.get('/about', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'about.html')));
 app.get('/contact', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'contact.html')));
 app.get('/faq', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'faq.html')));
