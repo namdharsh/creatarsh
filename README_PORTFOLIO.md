@@ -15,3 +15,6 @@ Added 9 client-facing portfolio concepts under `/portfolio/`:
 `/work` now includes an industry filter and Explore links for every concept.
 
 These are portfolio concepts, not claimed client projects. Replace demo names, imagery, copy and pricing before presenting a concept as a real client build.
+
+## Service URL routing
+Direct service URLs are served by Express at `/service/:slug` and `/services/:slug`; refreshing a service page is supported.

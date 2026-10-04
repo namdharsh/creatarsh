@@ -45,7 +45,9 @@ app.get('/login', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'login.html
 app.get('/register', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'register.html')));
 app.get('/account', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'account.html')));
 app.get('/services', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'services.html')));
-app.get('/service/:slug', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'service.html')));
+// Service detail pages: support direct navigation, refreshes and the plural alias.
+app.get('/service', (req, res) => res.redirect('/services'));
+app.get(['/service/:slug', '/services/:slug'], (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'service.html')));
 app.get('/work', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'work.html')));
 app.use('/portfolio', express.static(path.join(CUSTOMER_DIR, 'portfolio'), { extensions: ['html'] }));
 app.get('/about', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'about.html')));
