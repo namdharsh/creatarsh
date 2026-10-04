@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: creatarsh
+    runtime: node
+    buildCommand: npm install --prefix server
+    startCommand: npm start --prefix server
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: MANAGER_JWT_SECRET
+        sync: false
+      - key: CUSTOMER_JWT_SECRET
+        sync: false
+      - key: MANAGER_INITIAL_USERNAME
+        sync: false
+      - key: MANAGER_INITIAL_PASSWORD
+        sync: false
+      - key: CORS_ORIGINS
+        value: https://creatarsh.in,https://www.creatarsh.in

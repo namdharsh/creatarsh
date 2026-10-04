@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /account
+Disallow: /login
+Disallow: /register
+Disallow: /manager
+Disallow: /api/
+Sitemap: https://creatarsh.in/sitemap.xml

@@ -1,38 +1,40 @@
 # Creatarsh — Agency System
 
-Premium dark Creatarsh customer website + manager Studio OS, backed by a MongoDB API.
+Production-ready Creatarsh customer website + Manager Studio OS backed by MongoDB.
 
-## Customer
-- Multi-page website: Home, Services, Work, About, Contact
-- Customer registration/login
-- Persistent JWT login across refresh and page changes
-- My Account portal with projects, quotations, invoices and payments
-- Logged-in project enquiries linked to the customer
+## Included
+- Customer website: Home, Services, Work, About, Contact, FAQ
+- Customer registration/login and account portal
+- Projects, quotations, invoices, payments and notifications
+- Manager dashboard, CRM/leads, customers and project management
+- Website CMS: services, portfolio, testimonials, FAQ, banners and site content
+- Security headers, API rate limiting, JWT authentication and CORS controls
+- SEO metadata, canonical URLs, robots.txt, sitemap.xml and Organization schema
+- Render deployment configuration in `render.yaml`
 
-## Manager
-- Persistent manager login
-- Dashboard metrics
-- Leads & CRM
-- Customers directory with registration/last-login details
-- Projects and progress
-- Quotations
-- Invoices
-- Payments
-- Website CMS
-- Services, Portfolio, Testimonials, FAQ and Banners CRUD
-- Settings
-
-## Run
+## Run locally
 ```bash
 cd server
 npm install
 npm start
 ```
+
 Open `http://localhost:5000/` and `http://localhost:5000/manager/`.
 
-Create `server/.env` from `.env.example`. Never commit `.env`.
+Create `server/.env` from `server/.env.example`. Never commit `.env`.
 
-Customer and manager assets use relative paths so the same files work both on separate Render static services and when served by the Express server. If the customer and manager static files are hosted separately from the API, define `window.CREATARSH_API_URL` before `site.js` / `manager.js` loads.
+## Production / Render
+Use the repository root as the Render service root. `render.yaml` contains the build/start commands and health check.
 
-## Manager repair
-The manager UI uses its own stylesheet and script with a defined query-selector helper; this build preserves the manager UI while fixing the runtime boot error that prevented navigation from initializing.
+Required environment variables:
+- `MONGODB_URI`
+- `MANAGER_JWT_SECRET`
+- `CUSTOMER_JWT_SECRET`
+- `MANAGER_INITIAL_USERNAME`
+- `MANAGER_INITIAL_PASSWORD`
+- `CORS_ORIGINS` when the frontend is hosted separately
+
+After the first manager login, use a strong password and rotate any credentials that may previously have been exposed.
+
+## Important
+If the old project ZIP or Git history ever contained a real `.env`, rotate the MongoDB password and JWT secrets before production deployment.

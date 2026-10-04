@@ -13,19 +13,33 @@ const PORT = Number(process.env.PORT || 5000);
 const ROOT = path.join(__dirname, '..');
 const CUSTOMER_DIR = path.join(ROOT, 'customer');
 const MANAGER_DIR = path.join(ROOT, 'manager');
-const JWT_SECRET = process.env.MANAGER_JWT_SECRET || process.env.JWT_SECRET || 'change-this-secret-in-production';
+const JWT_SECRET = process.env.MANAGER_JWT_SECRET || process.env.JWT_SECRET;
 const CUSTOMER_JWT_SECRET = process.env.CUSTOMER_JWT_SECRET || JWT_SECRET;
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+if (IS_PRODUCTION && (!JWT_SECRET || !CUSTOMER_JWT_SECRET)) {
+  throw new Error('MANAGER_JWT_SECRET and CUSTOMER_JWT_SECRET must be configured in production.');
+}
+const corsOrigins = String(process.env.CORS_ORIGINS || '').split(',').map(v => v.trim()).filter(Boolean);
 
 app.disable('x-powered-by');
-app.use(helmet({ crossOriginResourcePolicy: false, contentSecurityPolicy: false }));
-app.use(cors({ origin: true, credentials: true }));
+app.use(helmet({ crossOriginResourcePolicy: false, contentSecurityPolicy: false, referrerPolicy: { policy: 'strict-origin-when-cross-origin' } }));
+app.use(cors({ origin(origin, callback) {
+  if (!origin || corsOrigins.length === 0 || corsOrigins.includes(origin)) return callback(null, true);
+  return callback(new Error('CORS origin not allowed'));
+}, credentials: false }));
 app.use(express.json({ limit: '8mb' }));
 app.use(express.urlencoded({ extended: true, limit: '8mb' }));
 
 // Serve the customer website and manager assets from the same Express service.
 // This keeps CSS/JS/images available when the API and web app are deployed together.
 app.use('/customer', express.static(CUSTOMER_DIR, { extensions: ['html'] }));
+// Root aliases keep the same customer HTML files working when Express serves the site at /.
+app.use('/assets', express.static(path.join(CUSTOMER_DIR, 'assets')));
+app.use('/css', express.static(path.join(CUSTOMER_DIR, 'css')));
+app.use('/js', express.static(path.join(CUSTOMER_DIR, 'js')));
 app.use('/manager', express.static(MANAGER_DIR, { extensions: ['html'] }));
+app.get('/robots.txt', (req, res) => res.sendFile(path.join(ROOT, 'robots.txt')));
+app.get('/sitemap.xml', (req, res) => res.sendFile(path.join(ROOT, 'sitemap.xml')));
 app.get('/', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'index.html')));
 app.get('/login', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'login.html')));
 app.get('/register', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'register.html')));
@@ -81,12 +95,14 @@ if (process.env.MONGODB_URI) {
 function cleanArray(v) { return Array.isArray(v) ? v.map(x => String(x).trim()).filter(Boolean) : []; }
 function id(prefix) { return `${prefix}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`; }
 function tokenFrom(req) { const h = req.headers.authorization || ''; return h.startsWith('Bearer ') ? h.slice(7).trim() : null; }
-function signManager(m) { return jwt.sign({ sub: String(m._id || 'env-manager'), username: m.username, role: m.role || 'manager', type: 'manager' }, JWT_SECRET, { expiresIn: process.env.MANAGER_JWT_EXPIRES || '90d' }); }
+function signManager(m) { return jwt.sign({ sub: String(m._id), username: m.username, role: m.role || 'manager', type: 'manager' }, JWT_SECRET, { expiresIn: process.env.MANAGER_JWT_EXPIRES || '90d' }); }
 function signCustomer(c) { return jwt.sign({ sub: String(c._id), email: c.email, type: 'customer' }, CUSTOMER_JWT_SECRET, { expiresIn: process.env.CUSTOMER_JWT_EXPIRES || '90d' }); }
 function verifyToken(req, type) { const token = tokenFrom(req); if (!token) throw new Error('NO_TOKEN'); const secret = type === 'manager' ? JWT_SECRET : CUSTOMER_JWT_SECRET; const payload = jwt.verify(token, secret); if (payload.type !== type) throw new Error('WRONG_TYPE'); return payload; }
 async function requireManager(req, res, next) { try { req.auth = verifyToken(req, 'manager'); next(); } catch (e) { res.status(401).json({ message: 'Manager session expired. Please sign in again.', code: 'AUTH_REQUIRED' }); } }
 async function requireCustomer(req, res, next) { try { req.auth = verifyToken(req, 'customer'); if (dbReady) { const c = await Customer.findById(req.auth.sub).select('_id active'); if (!c || !c.active) throw new Error('CUSTOMER_DISABLED'); } next(); } catch (e) { res.status(401).json({ message: 'Customer session expired. Please sign in again.', code: 'AUTH_REQUIRED' }); } }
-function calc(items = [], discount = 0, gst = 18) { const subtotal = items.reduce((s, x) => s + Number(x.quantity || 1) * Number(x.price || 0), 0); const afterDiscount = Math.max(0, subtotal - Number(discount || 0)); return { subtotal, total: Math.round(afterDiscount * (1 + Number(gst || 0) / 100) * 100) / 100 }; }
+function finiteNumber(v, fallback = 0) { const n = Number(v); return Number.isFinite(n) ? n : fallback; }
+function validItems(items) { return Array.isArray(items) && items.length > 0 && items.every(x => String(x?.name || '').trim() && finiteNumber(x.quantity, 1) > 0 && finiteNumber(x.price, 0) >= 0); }
+function calc(items = [], discount = 0, gst = 18) { const subtotal = items.reduce((s, x) => s + finiteNumber(x.quantity, 1) * finiteNumber(x.price, 0), 0); const safeDiscount = Math.min(Math.max(0, finiteNumber(discount, 0)), subtotal); const safeGst = Math.min(Math.max(0, finiteNumber(gst, 18)), 100); const afterDiscount = Math.max(0, subtotal - safeDiscount); return { subtotal: Math.round(subtotal * 100) / 100, total: Math.round(afterDiscount * (1 + safeGst / 100) * 100) / 100 }; }
 async function seed() {
   if (!dbReady) return;
   if (process.env.MANAGER_INITIAL_USERNAME && process.env.MANAGER_INITIAL_PASSWORD) {
@@ -104,7 +120,7 @@ async function seed() {
     { title: 'Custom Systems', description: 'Business software tailored to the way your team works.', icon: '⌘', features: ['Custom workflow', 'Dashboard', 'Integrations'], startingPrice: 40000, timeline: '4–12 weeks', order: 6 }
   ]);
 }
-setTimeout(seed, 2500);
+mongoose.connection.once('connected', () => { seed().catch(err => console.error('Seed failed:', err.message)); });
 
 // ---------- Public API ----------
 app.get('/api/health', (req, res) => res.json({ ok: true, database: dbReady, service: 'creatarsh-api' }));
@@ -129,22 +145,24 @@ app.post('/api/public/leads', async (req, res) => {
 
 // ---------- Auth ----------
 app.post('/api/manager/login', authLimiter, async (req, res) => {
-  const username = String(req.body.username || '').trim().toLowerCase(); const password = String(req.body.password || '');
+  const username = String(req.body.username || '').trim().toLowerCase();
+  const password = String(req.body.password || '');
   if (!username || !password) return res.status(400).json({ message: 'Username and password are required.' });
   try {
-    if (process.env.MANAGER_INITIAL_USERNAME && process.env.MANAGER_INITIAL_PASSWORD && username === process.env.MANAGER_INITIAL_USERNAME.toLowerCase() && password === process.env.MANAGER_INITIAL_PASSWORD) {
-      let manager = dbReady ? await Manager.findOne({ username }) : null; manager = manager || { _id: 'env-manager', username, role: 'manager' };
-      if (dbReady && manager._id !== 'env-manager') await Manager.updateOne({ _id: manager._id }, { lastLoginAt: new Date() });
-      return res.json({ token: signManager(manager), manager: { username: manager.username, role: manager.role || 'manager' } });
+    if (!dbReady) return res.status(503).json({ message: 'Database is not connected. Please configure MONGODB_URI.' });
+    let manager = await Manager.findOne({ username, active: true });
+    if (!manager && process.env.MANAGER_INITIAL_USERNAME && process.env.MANAGER_INITIAL_PASSWORD && username === process.env.MANAGER_INITIAL_USERNAME.toLowerCase() && password === process.env.MANAGER_INITIAL_PASSWORD) {
+      manager = await Manager.create({ username, passwordHash: await bcrypt.hash(password, 12), role: 'manager' });
     }
-    if (!dbReady) return res.status(503).json({ message: 'Database is not connected. Configure MONGODB_URI or use the configured initial manager credentials.' });
-    const manager = await Manager.findOne({ username, active: true }); if (!manager || !(await bcrypt.compare(password, manager.passwordHash))) return res.status(401).json({ message: 'Invalid manager credentials.' });
-    manager.lastLoginAt = new Date(); await manager.save(); res.json({ token: signManager(manager), manager: { username: manager.username, role: manager.role } });
-  } catch (e) { console.error(e); res.status(500).json({ message: 'Manager login failed.' }); }
+    if (!manager || !(await bcrypt.compare(password, manager.passwordHash))) return res.status(401).json({ message: 'Invalid manager credentials.' });
+    manager.lastLoginAt = new Date();
+    await manager.save();
+    res.json({ token: signManager(manager), manager: { username: manager.username, role: manager.role } });
+  } catch (e) { console.error('Manager login failed:', e.message); res.status(500).json({ message: 'Manager login failed.' }); }
 });
 app.get('/api/manager/me', requireManager, async (req, res) => res.json({ manager: { username: req.auth.username, role: req.auth.role } }));
 app.post('/api/manager/change-password', requireManager, async (req, res) => {
-  if (!dbReady || req.auth.sub === 'env-manager') return res.status(400).json({ message: 'Use MANAGER_INITIAL_PASSWORD in Render environment variables for the initial manager account.' });
+  if (!dbReady) return res.status(503).json({ message: 'Database is not connected.' });
   const current = String(req.body.currentPassword || ''), next = String(req.body.newPassword || ''); if (next.length < 8) return res.status(400).json({ message: 'New password must be at least 8 characters.' });
   const m = await Manager.findById(req.auth.sub); if (!m || !(await bcrypt.compare(current, m.passwordHash))) return res.status(401).json({ message: 'Current password is incorrect.' }); m.passwordHash = await bcrypt.hash(next, 12); await m.save(); res.json({ message: 'Password updated.' });
 });
@@ -189,16 +207,16 @@ app.post('/api/manager/leads/:id/convert', requireManager, async (req, res) => {
   lead.customer = customer._id; lead.status = 'WON'; await lead.save(); await Notification.create({ recipientType: 'customer', recipient: customer._id, title: 'Project created', message: `Your Creatarsh project “${project.name}” has been created.`, link: '/account' }); res.status(201).json(project);
 });
 app.get('/api/manager/projects', requireManager, async (req, res) => res.json(dbReady ? await Project.find().populate('customer', 'name email company').sort({ createdAt: -1 }) : []));
-app.post('/api/manager/projects', requireManager, async (req, res) => { const p = await Project.create({ projectId: id('PRJ'), customer: req.body.customer, name: req.body.name, description: req.body.description, value: Number(req.body.value || 0), status: req.body.status || 'PLANNING', progress: Number(req.body.progress || 0), startDate: req.body.startDate || null, dueDate: req.body.dueDate || null, notes: req.body.notes }); if (p.customer) await Notification.create({ recipientType: 'customer', recipient: p.customer, title: 'New project', message: `Your project “${p.name}” is now available in your account.`, link: '/account' }); res.status(201).json(p); });
+app.post('/api/manager/projects', requireManager, async (req, res) => { if (!dbReady) return res.status(503).json({ message: 'Database is not connected.' }); if (!req.body.name) return res.status(400).json({ message: 'Project name is required.' }); const p = await Project.create({ projectId: id('PRJ'), customer: req.body.customer, name: req.body.name, description: req.body.description, value: Number(req.body.value || 0), status: req.body.status || 'PLANNING', progress: Number(req.body.progress || 0), startDate: req.body.startDate || null, dueDate: req.body.dueDate || null, notes: req.body.notes }); if (p.customer) await Notification.create({ recipientType: 'customer', recipient: p.customer, title: 'New project', message: `Your project “${p.name}” is now available in your account.`, link: '/account' }); res.status(201).json(p); });
 app.put('/api/manager/projects/:id', requireManager, async (req, res) => { const p = await Project.findByIdAndUpdate(req.params.id, { $set: { name: req.body.name, description: req.body.description, status: req.body.status, progress: Number(req.body.progress || 0), value: Number(req.body.value || 0), startDate: req.body.startDate || null, dueDate: req.body.dueDate || null, notes: req.body.notes } }, { new: true }).populate('customer', 'name email'); res.json(p); });
 app.get('/api/manager/quotes', requireManager, async (req, res) => res.json(dbReady ? await Quote.find().populate('customer', 'name email').populate('project', 'name').sort({ createdAt: -1 }) : []));
-app.post('/api/manager/quotes', requireManager, async (req, res) => { const items = Array.isArray(req.body.items) ? req.body.items : []; const totals = calc(items, req.body.discount, req.body.gst); const q = await Quote.create({ quoteId: id('QUO'), customer: req.body.customer, project: req.body.project || null, items, discount: Number(req.body.discount || 0), gst: Number(req.body.gst ?? 18), ...totals, status: req.body.status || 'SENT', validUntil: req.body.validUntil || null, notes: req.body.notes }); if (q.customer) await Notification.create({ recipientType: 'customer', recipient: q.customer, title: 'New quotation', message: `Quotation ${q.quoteId} is ready to review.`, link: '/account' }); res.status(201).json(q); });
+app.post('/api/manager/quotes', requireManager, async (req, res) => { if (!dbReady) return res.status(503).json({ message: 'Database is not connected.' }); const items = Array.isArray(req.body.items) ? req.body.items : []; if (!validItems(items)) return res.status(400).json({ message: 'At least one valid quotation item is required.' }); const totals = calc(items, req.body.discount, req.body.gst); const q = await Quote.create({ quoteId: id('QUO'), customer: req.body.customer, project: req.body.project || null, items, discount: Number(req.body.discount || 0), gst: Number(req.body.gst ?? 18), ...totals, status: req.body.status || 'SENT', validUntil: req.body.validUntil || null, notes: req.body.notes }); if (q.customer) await Notification.create({ recipientType: 'customer', recipient: q.customer, title: 'New quotation', message: `Quotation ${q.quoteId} is ready to review.`, link: '/account' }); res.status(201).json(q); });
 app.put('/api/manager/quotes/:id', requireManager, async (req, res) => { const totals = calc(req.body.items || [], req.body.discount, req.body.gst); const q = await Quote.findByIdAndUpdate(req.params.id, { $set: { items: req.body.items || [], discount: Number(req.body.discount || 0), gst: Number(req.body.gst ?? 18), ...totals, status: req.body.status, validUntil: req.body.validUntil || null, notes: req.body.notes } }, { new: true }); res.json(q); });
 app.post('/api/customer/quotes/:id/respond', requireCustomer, async (req, res) => { const q = await Quote.findOneAndUpdate({ _id: req.params.id, customer: req.auth.sub }, { status: req.body.status === 'ACCEPTED' ? 'ACCEPTED' : 'REJECTED' }, { new: true }); if (!q) return res.status(404).json({ message: 'Quotation not found.' }); res.json(q); });
 app.get('/api/manager/invoices', requireManager, async (req, res) => res.json(dbReady ? await Invoice.find().populate('customer', 'name email').populate('project', 'name').sort({ createdAt: -1 }) : []));
-app.post('/api/manager/invoices', requireManager, async (req, res) => { const items = req.body.items || []; const totals = calc(items, req.body.discount, req.body.gst); const i = await Invoice.create({ invoiceId: id('INV'), customer: req.body.customer, project: req.body.project || null, items, discount: Number(req.body.discount || 0), gst: Number(req.body.gst ?? 18), ...totals, status: req.body.status || 'UNPAID', dueDate: req.body.dueDate || null }); if (i.customer) await Notification.create({ recipientType: 'customer', recipient: i.customer, title: 'New invoice', message: `Invoice ${i.invoiceId} is available in your account.`, link: '/account' }); res.status(201).json(i); });
+app.post('/api/manager/invoices', requireManager, async (req, res) => { if (!dbReady) return res.status(503).json({ message: 'Database is not connected.' }); const items = req.body.items || []; if (!validItems(items)) return res.status(400).json({ message: 'At least one valid invoice item is required.' }); const totals = calc(items, req.body.discount, req.body.gst); const i = await Invoice.create({ invoiceId: id('INV'), customer: req.body.customer, project: req.body.project || null, items, discount: Number(req.body.discount || 0), gst: Number(req.body.gst ?? 18), ...totals, status: req.body.status || 'UNPAID', dueDate: req.body.dueDate || null }); if (i.customer) await Notification.create({ recipientType: 'customer', recipient: i.customer, title: 'New invoice', message: `Invoice ${i.invoiceId} is available in your account.`, link: '/account' }); res.status(201).json(i); });
 app.get('/api/manager/payments', requireManager, async (req, res) => res.json(dbReady ? await Payment.find().populate('customer', 'name email').populate('project', 'name').sort({ createdAt: -1 }) : []));
-app.post('/api/manager/payments', requireManager, async (req, res) => { const p = await Payment.create({ transactionId: req.body.transactionId || id('TXN'), customer: req.body.customer, project: req.body.project || null, invoice: req.body.invoice || null, amount: Number(req.body.amount || 0), gateway: req.body.gateway || 'Manual', status: req.body.status || 'SUCCESS', paidAt: req.body.paidAt || new Date(), note: req.body.note }); if (p.customer) await Notification.create({ recipientType: 'customer', recipient: p.customer, title: 'Payment recorded', message: `₹${Number(p.amount).toLocaleString('en-IN')} payment has been recorded.`, link: '/account' }); res.status(201).json(p); });
+app.post('/api/manager/payments', requireManager, async (req, res) => { if (!dbReady) return res.status(503).json({ message: 'Database is not connected.' }); const amount = finiteNumber(req.body.amount, 0); if (amount <= 0) return res.status(400).json({ message: 'Payment amount must be greater than zero.' }); const p = await Payment.create({ transactionId: req.body.transactionId || id('TXN'), customer: req.body.customer, project: req.body.project || null, invoice: req.body.invoice || null, amount, gateway: req.body.gateway || 'Manual', status: req.body.status || 'SUCCESS', paidAt: req.body.paidAt || new Date(), note: req.body.note }); if (p.customer) await Notification.create({ recipientType: 'customer', recipient: p.customer, title: 'Payment recorded', message: `₹${Number(p.amount).toLocaleString('en-IN')} payment has been recorded.`, link: '/account' }); res.status(201).json(p); });
 
 // ---------- CMS generic CRUD ----------
 const cms = { services: Service, portfolio: Portfolio, testimonials: Testimonial, faq: FAQ, banners: Banner };
@@ -213,4 +231,9 @@ app.put('/api/manager/site', requireManager, async (req, res) => res.json(await 
 
 // ---------- Error / start ----------
 app.use('/api', (req, res) => res.status(404).json({ message: 'API route not found.' }));
+app.use((err, req, res, next) => {
+  console.error('Unhandled request error:', err.message);
+  if (res.headersSent) return next(err);
+  res.status(500).json({ message: 'Something went wrong on the server.' });
+});
 app.listen(PORT, () => console.log(`Creatarsh server running on port ${PORT}`));

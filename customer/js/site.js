@@ -7,7 +7,18 @@ const customer=()=>{try{return JSON.parse(localStorage.getItem('cr_customer')||'
 const save=(d)=>{localStorage.setItem('cr_customer_token',d.token);localStorage.setItem('cr_customer',JSON.stringify(d.customer));};
 const logout=()=>{localStorage.removeItem('cr_customer_token');localStorage.removeItem('cr_customer');location.href='/login';};
 async function api(path,opt={}){const h={'Content-Type':'application/json',...(opt.headers||{})};if(token())h.Authorization='Bearer '+token();const r=await fetch(API+path,{...opt,headers:h});let d={};try{d=await r.json()}catch{}if(!r.ok){const e=new Error(d.message||`Request failed (${r.status})`);e.status=r.status;throw e}return d}
-function nav(){const c=customer();const account=$('#accountLink');if(account){account.textContent=c?'My Account':'Client Login';account.href=c?'/account':'/login';account.classList.toggle('active',location.pathname.includes('account')||location.pathname.includes('login'))}}
+function nav(){
+  const c=customer();
+  const account=$('#accountLink');
+  if(account){account.textContent=c?'My Account':'Client Login';account.href=c?'/account':'/login';account.classList.toggle('active',location.pathname.includes('account')||location.pathname.includes('login'));}
+  const navInner=$('.nav-inner'), links=$('.links');
+  if(navInner && links && !$('.mobile-menu-toggle')){
+    const toggle=document.createElement('button'); toggle.type='button'; toggle.className='mobile-menu-toggle'; toggle.setAttribute('aria-label','Open navigation'); toggle.setAttribute('aria-expanded','false'); toggle.textContent='☰';
+    const menu=document.createElement('div'); menu.className='mobile-menu'; menu.innerHTML=links.innerHTML;
+    navInner.append(toggle); navInner.parentElement.append(menu);
+    toggle.onclick=()=>{const open=menu.classList.toggle('open');toggle.setAttribute('aria-expanded',String(open));toggle.textContent=open?'×':'☰';};
+  }
+}
 function shell(){nav();const y=$('#year');if(y)y.textContent=new Date().getFullYear();}
 async function content(){try{return await api('/public/content')}catch{return {services:[],portfolio:[],testimonials:[],faqs:[],site:{}}}}
 function renderBanners(d){

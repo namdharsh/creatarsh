@@ -25,3 +25,5 @@ body>header,body>main,body>footer{position:relative;z-index:1}
 .hero{isolation:isolate}
 .hero-grid,.section,.page-head,.auth-wrap{position:relative;z-index:1}
 @media(max-width:600px){#particleLogo.global-particles{opacity:.62}}
+
+.mobile-menu-toggle{display:none;border:1px solid var(--line);background:transparent;color:var(--text);border-radius:10px;width:42px;height:42px;font-size:22px}.mobile-menu{display:none}.mobile-menu a{display:block;padding:12px 20px;border-top:1px solid var(--line);color:#c8d3ce}.mobile-menu a.active{color:var(--green)}@media(max-width:900px){.mobile-menu-toggle{display:block;margin-left:auto}.nav-inner .nav-actions{margin-left:auto}.mobile-menu.open{display:block;position:absolute;top:76px;left:0;right:0;background:rgba(5,9,8,.98);border-bottom:1px solid var(--line);z-index:19}.mobile-menu.open a{font-size:15px}}
