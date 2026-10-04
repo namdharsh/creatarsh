@@ -45,6 +45,7 @@ app.get('/login', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'login.html
 app.get('/register', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'register.html')));
 app.get('/account', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'account.html')));
 app.get('/services', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'services.html')));
+app.get('/service/:slug', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'service.html')));
 app.get('/work', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'work.html')));
 app.get('/about', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'about.html')));
 app.get('/contact', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'contact.html')));
@@ -57,8 +58,10 @@ app.use('/api/', limiter);
 
 // ---------- Models ----------
 const serviceSchema = new mongoose.Schema({
-  title: { type: String, required: true, trim: true }, description: String, icon: { type: String, default: '✦' },
-  features: [String], startingPrice: { type: Number, default: 0 }, timeline: String,
+  title: { type: String, required: true, trim: true }, slug: { type: String, index: true }, description: String, icon: { type: String, default: '✦' },
+  features: [String], deliverables: [String], designTypes: [String],
+  packages: [{ name: String, price: String, description: String, features: [String], popular: { type: Boolean, default: false } }],
+  offers: [String], startingPrice: { type: Number, default: 0 }, timeline: String,
   active: { type: Boolean, default: true }, order: { type: Number, default: 0 }
 }, { timestamps: true });
 const portfolioSchema = new mongoose.Schema({
@@ -93,6 +96,8 @@ if (process.env.MONGODB_URI) {
 
 // ---------- Utilities ----------
 function cleanArray(v) { return Array.isArray(v) ? v.map(x => String(x).trim()).filter(Boolean) : []; }
+function slugify(v) { return String(v || '').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+function cleanPackages(v) { return Array.isArray(v) ? v.map(x => ({ name:String(x?.name||'').trim(), price:String(x?.price||'').trim(), description:String(x?.description||'').trim(), features:cleanArray(x?.features), popular:!!x?.popular })).filter(x=>x.name) : []; }
 function id(prefix) { return `${prefix}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`; }
 function tokenFrom(req) { const h = req.headers.authorization || ''; return h.startsWith('Bearer ') ? h.slice(7).trim() : null; }
 function signManager(m) { return jwt.sign({ sub: String(m._id), username: m.username, role: m.role || 'manager', type: 'manager' }, JWT_SECRET, { expiresIn: process.env.MANAGER_JWT_EXPIRES || '90d' }); }
@@ -222,8 +227,8 @@ app.post('/api/manager/payments', requireManager, async (req, res) => { if (!dbR
 const cms = { services: Service, portfolio: Portfolio, testimonials: Testimonial, faq: FAQ, banners: Banner };
 for (const [key, Model] of Object.entries(cms)) {
   app.get(`/api/manager/${key}`, requireManager, async (req, res) => res.json(await Model.find().sort({ order: 1, createdAt: -1 })));
-  app.post(`/api/manager/${key}`, requireManager, async (req, res) => { const d = { ...req.body }; if (key === 'services' || key === 'portfolio') { d.features = cleanArray(d.features); d.technologies = cleanArray(d.technologies); d.media = cleanArray(d.media); d.results = cleanArray(d.results); } const item = await Model.create(d); res.status(201).json(item); });
-  app.put(`/api/manager/${key}/:id`, requireManager, async (req, res) => { const d = { ...req.body }; if (key === 'services' || key === 'portfolio') { d.features = cleanArray(d.features); d.technologies = cleanArray(d.technologies); d.media = cleanArray(d.media); d.results = cleanArray(d.results); } const item = await Model.findByIdAndUpdate(req.params.id, d, { new: true }); if (!item) return res.status(404).json({ message: 'Item not found.' }); res.json(item); });
+  app.post(`/api/manager/${key}`, requireManager, async (req, res) => { const d = { ...req.body }; if (key === 'services' || key === 'portfolio') { d.features = cleanArray(d.features); d.technologies = cleanArray(d.technologies); d.media = cleanArray(d.media); d.results = cleanArray(d.results); } if (key === 'services') { d.slug = d.slug || slugify(d.title); d.deliverables = cleanArray(d.deliverables); d.designTypes = cleanArray(d.designTypes); d.offers = cleanArray(d.offers); d.packages = cleanPackages(d.packages); } const item = await Model.create(d); res.status(201).json(item); });
+  app.put(`/api/manager/${key}/:id`, requireManager, async (req, res) => { const d = { ...req.body }; if (key === 'services' || key === 'portfolio') { d.features = cleanArray(d.features); d.technologies = cleanArray(d.technologies); d.media = cleanArray(d.media); d.results = cleanArray(d.results); } if (key === 'services') { d.slug = d.slug || slugify(d.title); d.deliverables = cleanArray(d.deliverables); d.designTypes = cleanArray(d.designTypes); d.offers = cleanArray(d.offers); d.packages = cleanPackages(d.packages); } const item = await Model.findByIdAndUpdate(req.params.id, d, { new: true }); if (!item) return res.status(404).json({ message: 'Item not found.' }); res.json(item); });
   app.delete(`/api/manager/${key}/:id`, requireManager, async (req, res) => { await Model.findByIdAndDelete(req.params.id); res.json({ ok: true }); });
 }
 app.get('/api/manager/site', requireManager, async (req, res) => res.json(await Site.findOne({ key: 'main' }) || {}));
