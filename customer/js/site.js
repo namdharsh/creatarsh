@@ -22,15 +22,7 @@ function nav(){
 }
 function shell(){nav();const y=$('#year');if(y)y.textContent=new Date().getFullYear();}
 async function content(){
-  try{return await api('/public/content')}
-  catch{return {services:[
-    {title:'Web Development',slug:'web-development',description:'Fast, scalable websites and web applications.',icon:'</>',features:['Responsive UI','Modern architecture','Deployment'],startingPrice:15000,timeline:'1–4 weeks'},
-    {title:'App Development',slug:'app-development',description:'Cross-platform mobile apps built around your workflow.',icon:'▣',features:['Android & iOS','API integration','App launch'],startingPrice:25000,timeline:'3–8 weeks'},
-    {title:'UI/UX Design',slug:'ui-ux-design',description:'Clear, conversion-focused interfaces with a premium visual system.',icon:'✦',features:['Wireframes','UI system','Prototype'],startingPrice:8000,timeline:'1–2 weeks'},
-    {title:'Branding & Design',slug:'branding-design',description:'Identity, social creatives and digital brand assets.',icon:'◇',features:['Logo system','Brand kit','Social assets'],startingPrice:5000,timeline:'3–10 days'},
-    {title:'E-commerce',slug:'e-commerce',description:'Complete stores with payments, inventory and admin systems.',icon:'□',features:['Storefront','Payments','Manager panel'],startingPrice:30000,timeline:'3–8 weeks'},
-    {title:'Custom Systems',slug:'custom-systems',description:'Business software tailored to the way your team works.',icon:'⌘',features:['Custom workflow','Dashboard','Integrations'],startingPrice:40000,timeline:'4–12 weeks'}
-  ],portfolio:[],testimonials:[],faqs:[],site:{}}}
+  return await api('/public/content');
 }
 function renderBanners(d){
   const slider=$('#bannerSlider'),track=$('#bannerTrack'),dots=$('#bannerDots');
@@ -87,8 +79,8 @@ function renderBanners(d){
   start();
 }
 function renderHome(d){const s=d.site||{};if($('.hero-title')&&s.heroTitle) $('.hero-title').innerHTML=esc(s.heroTitle).replace(/\n/g,'<br>');if($('.hero-text')&&s.heroText)$('.hero-text').textContent=s.heroText;const services=$('#serviceGrid');if(services)services.innerHTML=(d.services||[]).slice(0,6).map(x=>`<article class="card service-card"><a class="service-link" href="/service/${encodeURIComponent(x.slug||slugifyClient(x.title))}"><div class="icon">${esc(x.icon||'✦')}</div><h3>${esc(x.title)}</h3><p>${esc(x.description)}</p><div class="price">${x.startingPrice?'Starting ₹'+Number(x.startingPrice).toLocaleString('en-IN'):''}</div><span class="service-more">Explore service ↗</span></a></article>`).join('')||'<div class="empty">Services will appear here.</div>';const work=$('#workGrid');if(work)work.innerHTML=(d.portfolio||[]).slice(0,4).map(x=>`<article class="card work-card"><div class="work-media">${x.media?.[0]?`<img src="${esc(x.media[0])}" alt="${esc(x.title)}" style="width:100%;height:100%;object-fit:cover">`:'CREATARSH'}</div><div class="work-body"><span class="tag">${esc(x.category||'Project')}</span><h3>${esc(x.title)}</h3><p>${esc(x.description||'')}</p></div></article>`).join('')||'<div class="empty">Portfolio projects will appear here.</div>';const testimonials=$('#testimonialGrid');if(testimonials)testimonials.innerHTML=(d.testimonials||[]).slice(0,3).map(x=>`<article class="card"><div class="quote">“${esc(x.quote||'Great experience.') }”</div><p style="margin-top:20px">${esc(x.name)} · ${esc(x.company||'Client')}</p></article>`).join('')||'<div class="empty">Client stories will appear here.</div>';}
-function renderServices(d){const el=$('#allServices');if(!el)return;const serviceCards=(d.services||[]).map(x=>`<article class="card service-card"><a class="service-link" href="/service/${encodeURIComponent(x.slug||slugifyClient(x.title))}"><div class="icon">${esc(x.icon||'✦')}</div><h3>${esc(x.title)}</h3><p>${esc(x.description)}</p><div class="price">${x.startingPrice?'From ₹'+Number(x.startingPrice).toLocaleString('en-IN'):''} ${x.timeline?' · '+esc(x.timeline):''}</div>${x.features?.length?`<ul class="muted">${x.features.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:''}<span class="service-more">Explore pricing, work & packages ↗</span></a></article>`).join('');const portfolioCard=`<article class="card service-card"><a class="service-link" href="/portfolio/car-dealership"><div class="icon">⌁</div><h3>Car Dealership</h3><p>Premium automotive website with vehicle inventory, filters, details and test-drive enquiry flow.</p><div class="price">Portfolio Concept</div><span class="service-more">Explore portfolio ↗</span></a></article>`;el.innerHTML=serviceCards+portfolioCard||'<div class="empty">No services published yet.</div>'}
-function renderWork(d){const el=$('#allWork');if(!el)return;el.innerHTML=(d.portfolio||[]).map(x=>`<article class="card work-card"><div class="work-media">${x.media?.[0]?`<img src="${esc(x.media[0])}" alt="${esc(x.title)}" style="width:100%;height:100%;object-fit:cover">`:'CREATARSH'}</div><div class="work-body"><span class="tag">${esc(x.category||'Project')}</span><h3>${esc(x.title)}</h3><p>${esc(x.description||'')}</p>${x.technologies?.length?`<p class="muted" style="margin-top:12px">${x.technologies.map(esc).join(' · ')}</p>`:''}</div></article>`).join('')||'<div class="empty">No portfolio projects published yet.</div>'}
+function renderServices(d){const el=$('#allServices');if(!el)return;const serviceCards=(d.services||[]).map(x=>`<article class="card service-card"><a class="service-link" href="/service/${encodeURIComponent(x.slug||slugifyClient(x.title))}"><div class="icon">${esc(x.icon||'✦')}</div><h3>${esc(x.title)}</h3><p>${esc(x.description)}</p><div class="price">${x.startingPrice?'From ₹'+Number(x.startingPrice).toLocaleString('en-IN'):''} ${x.timeline?' · '+esc(x.timeline):''}</div>${x.features?.length?`<ul class="muted">${x.features.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:''}<span class="service-more">Explore pricing, work & packages ↗</span></a></article>`).join('');el.innerHTML=serviceCards||'<div class="empty">No services published yet.</div>'}
+function renderWork(d){const el=$('#allWork');if(!el)return;el.innerHTML=(d.portfolio||[]).map(x=>{const slug=slugifyClient(x.title);return `<article class="card work-card"><a href="/portfolio/${encodeURIComponent(slug)}" style="display:block;height:100%"><div class="work-media">${x.media?.[0]?`<img src="${esc(x.media[0])}" alt="${esc(x.title)}" style="width:100%;height:100%;object-fit:cover">`:'CREATARSH'}</div><div class="work-body"><span class="tag">${esc(x.category||'Project')}</span><h3>${esc(x.title)}</h3><p>${esc(x.description||'')}</p>${x.technologies?.length?`<p class="muted" style="margin-top:12px">${x.technologies.map(esc).join(' · ')}</p>`:''}<span class="service-more">View project ↗</span></div></a></article>`}).join('')||'<div class="empty">No portfolio projects published yet.</div>'}
 function renderFaq(d){const el=$('#faqList');if(el)el.innerHTML=(d.faqs||[]).map(x=>`<details><summary>${esc(x.question)} <span>+</span></summary><p>${esc(x.answer)}</p></details>`).join('')||'<div class="empty">FAQ will appear here.</div>'}
 function setupLead(){const f=$('#leadForm');if(!f)return;const c=customer();['name','email','whatsapp','company'].forEach(k=>{if(c&&f.elements[k])f.elements[k].value=c[k]||''});f.onsubmit=async e=>{e.preventDefault();const st=$('#formStatus'),b=f.querySelector('button[type=submit]');b.disabled=true;st.textContent='Sending…';try{const d=await api('/public/leads',{method:'POST',body:JSON.stringify(Object.fromEntries(new FormData(f)))});st.textContent=`Received · Enquiry ${d.enquiryId}`;f.reset()}catch(e){st.textContent=e.message}finally{b.disabled=false}}}
 function authPage(mode){const f=$('#authForm');if(!f)return;const c=customer();if(c&&token()){location.href='/account';return}f.innerHTML=mode==='login'?`<div class="field"><label>Email</label><input name="email" type="email" required placeholder="you@company.com"></div><div class="field"><label>Password</label><input name="password" type="password" required placeholder="Your password"></div><button class="btn primary" style="width:100%">Sign in ↗</button>`:`<div class="form-grid"><div class="field"><label>Name</label><input name="name" required placeholder="Your name"></div><div class="field"><label>Email</label><input name="email" type="email" required placeholder="you@company.com"></div><div class="field"><label>Phone</label><input name="phone" placeholder="+91"></div><div class="field"><label>Company</label><input name="company" placeholder="Company name"></div><div class="field full"><label>Password</label><input name="password" type="password" minlength="8" required placeholder="Minimum 8 characters"></div></div><button class="btn primary" style="width:100%">Create account ↗</button>`;f.onsubmit=async e=>{e.preventDefault();const st=$('#authStatus'),b=f.querySelector('button');b.disabled=true;st.textContent='Please wait…';try{save(await api('/customer/'+mode,{method:'POST',body:JSON.stringify(Object.fromEntries(new FormData(f)))}));location.href='/account'}catch(err){st.textContent=err.message}finally{b.disabled=false}}}
@@ -334,7 +326,37 @@ function initParticleLogo(){
   reducedMotion.addEventListener?.('change',()=>{build();start();});
 }
 
-async function init(){shell();const page=document.body.dataset.page;const d=await content();if(page==='home'){renderHome(d);renderBanners(d);initParticleLogo();}if(page==='services')renderServices(d);if(page==='service')renderServiceDetail();if(page==='work')renderWork(d);if(page==='contact')setupLead();if(page==='faq')renderFaq(d);if(page==='account')account();if(page==='login')authPage('login');if(page==='register')authPage('register');}
+async function renderPortfolioDetail(){
+  const root=$('#portfolioRoot'); if(!root)return;
+  const slug=location.pathname.split('/').filter(Boolean).pop();
+  try{
+    const d=await api('/public/portfolio/'+encodeURIComponent(slug));
+    const x=d.project||{};
+    root.innerHTML=`<section class="page-head"><div class="container"><span class="eyebrow">CREATARSH PORTFOLIO</span><h1>${esc(x.title)}</h1><p>${esc(x.description||'')}</p><div class="actions"><a class="btn primary" href="/contact">Build something like this ↗</a><a class="btn" href="/work">View all work</a></div></div></section><section class="section"><div class="container"><div class="portfolio-detail-grid"><div>${x.media?.length?x.media.map((m,i)=>`<img src="${esc(m)}" alt="${esc(x.title)} ${i+1}" loading="lazy" style="width:100%;border-radius:18px;margin-bottom:18px;display:block">`).join(''):'<div class="card" style="min-height:320px;display:grid;place-items:center">CREATARSH</div>'}</div><aside class="card"><span class="eyebrow">PROJECT DETAILS</span><h2>${esc(x.client||'Client project')}</h2><p>${esc(x.category||'Digital project')}</p>${x.technologies?.length?`<h3>Technologies</h3><p>${x.technologies.map(esc).join(' · ')}</p>`:''}${x.results?.length?`<h3>Results</h3><ul>${x.results.map(r=>`<li>${esc(r)}</li>`).join('')}</ul>`:''}${x.projectUrl?`<a class="btn primary" href="${esc(x.projectUrl)}" target="_blank" rel="noopener">Open project ↗</a>`:''}</aside></div></div></section>`;
+  }catch(e){root.innerHTML=`<section class="page-head"><div class="container"><span class="eyebrow">PORTFOLIO</span><h1>Project unavailable.</h1><p>${esc(e.message)}</p><a class="btn primary" href="/work">Back to work</a></div></section>`}
+}
+async function init(){
+  shell();
+  const page=document.body.dataset.page;
+  try{
+    if(page==='home'){const d=await content();renderHome(d);renderBanners(d);initParticleLogo();}
+    else if(page==='services'){const d=await content();renderServices(d);}
+    else if(page==='service'){await renderServiceDetail();}
+    else if(page==='work'){const d=await content();renderWork(d);}
+    else if(page==='portfolio'){await renderPortfolioDetail();}
+    else if(page==='faq'){const d=await content();renderFaq(d);}
+    else if(page==='contact')setupLead();
+    else if(page==='account')account();
+    else if(page==='login')authPage('login');
+    else if(page==='register')authPage('register');
+  }catch(e){
+    const root=document.querySelector('main')||document.body;
+    const msg=esc(e.message||'The website content could not be loaded.');
+    if(page==='home'||page==='services'||page==='work'||page==='faq') root.innerHTML=`<section class="page-head"><div class="container"><span class="eyebrow">TEMPORARILY UNAVAILABLE</span><h1>We are updating the site.</h1><p>${msg}</p><a class="btn primary" href="/contact">Contact Creatarsh ↗</a></div></section>`;
+    else console.error(e);
+  }
+}
+
 init();
 
 function serviceDefaults(title){

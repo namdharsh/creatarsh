@@ -38,3 +38,19 @@ After the first manager login, use a strong password and rotate any credentials 
 
 ## Important
 If the old project ZIP or Git history ever contained a real `.env`, rotate the MongoDB password and JWT secrets before production deployment.
+
+## Important: MongoDB-driven public website
+
+The public Creatarsh site does not use hardcoded service/portfolio/banner content. MongoDB is the source of truth for:
+- Services
+- Portfolio projects
+- Homepage banners
+- Testimonials
+- FAQs
+- Website CMS content
+
+Manage these from `/manager/` after connecting the API to MongoDB with `MONGODB_URI`.
+
+The public site intentionally does not fall back to hardcoded service/portfolio data when MongoDB is unavailable. This prevents stale content from appearing and makes the Manager CMS the single source of truth.
+
+For production, configure `MONGODB_URI`, `MANAGER_JWT_SECRET`, `CUSTOMER_JWT_SECRET`, and the initial manager credentials in the hosting provider's environment settings. Never commit `.env` or MongoDB credentials to GitHub.

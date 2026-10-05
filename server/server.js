@@ -48,10 +48,9 @@ app.get('/services', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'service
 // Service detail pages: support direct navigation, refreshes and the plural alias.
 app.get('/service', (req, res) => res.redirect('/services'));
 app.get(['/service/:slug', '/services/:slug'], (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'service.html')));
-// Static fallback for service URLs. This also makes direct navigation resilient if a host/rewrite layer bypasses the dynamic route.
-app.use('/service', express.static(path.join(CUSTOMER_DIR, 'service-routes'), { extensions: ['html'] }));
 app.get('/work', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'work.html')));
-app.use('/portfolio', express.static(path.join(CUSTOMER_DIR, 'portfolio'), { extensions: ['html'] }));
+app.get('/portfolio', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'work.html')));
+app.get('/portfolio/:slug', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'portfolio.html')));
 app.get('/about', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'about.html')));
 app.get('/contact', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'contact.html')));
 app.get('/faq', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'faq.html')));
@@ -156,6 +155,17 @@ app.get('/api/public/pricing', (req,res) => res.json({version:'2026-10',currency
   {code:'ERP_75000',name:'School ERP',price:75000,description:'School management platform starting package.',features:['Core ERP','Admin/teacher/parent/student workflows','Reports','Deployment planning']}
 ]}));
 app.post('/api/public/orders', async (req,res) => { if(!dbReady)return res.status(503).json({message:'Ordering is temporarily unavailable.'}); const b=req.body||{}; if(!b.name||!b.email||!b.productCode||String(b.password||'').length<8)return res.status(400).json({message:'Name, email, product and a password of at least 8 characters are required.'}); const prices={PRESENCE_499:499,BUSINESS_1499:1499,PRO_2999:2999,DIGITAL_7999:7999,GROWTH_14999:14999,SOFTWARE_49999:49999,ERP_75000:75000}; if(!prices[b.productCode])return res.status(400).json({message:'Invalid product.'}); try{let c=await Customer.findOne({email:String(b.email).trim().toLowerCase()}); if(c)return res.status(409).json({message:'An account with this email already exists. Please sign in first, then place the order from your account.'}); c=await Customer.create({name:String(b.name).trim(),email:String(b.email).trim().toLowerCase(),phone:b.phone,company:b.company,passwordHash:await bcrypt.hash(String(b.password),12),lastLoginAt:new Date()}); const o=await Order.create({orderId:id('ORD'),customer:c._id,productType:'SERVICE',productName:b.productName,amount:prices[b.productCode],status:'PENDING_PAYMENT',business:b.company,requirements:b.requirements,acceptedTermsVersion:b.termsVersion||'2026-10',privacyNoticeVersion:b.privacyVersion||'2026-10'}); await Notification.create({recipientType:'customer',recipient:c._id,title:'Order created',message:`Order ${o.orderId} has been created. Our team will contact you for payment and onboarding.`,link:'/account'}); res.status(201).json({orderId:o.orderId,amount:o.amount,customerId:c._id,token:signCustomer(c),customer:{id:c._id,name:c.name,email:c.email,phone:c.phone,company:c.company}});}catch(e){console.error('Order error',e.message);res.status(400).json({message:'Could not create order.'});} });
+app.get('/api/public/portfolio/:slug', async (req, res) => {
+  if (!dbReady) return res.status(503).json({ message: 'Website content is temporarily unavailable because the database is not connected.' });
+  try {
+    const slug = String(req.params.slug || '').toLowerCase().trim();
+    const items = await Portfolio.find({ active: true }).sort({ order: 1, createdAt: -1 });
+    const match = items.find(x => String(x.title || '').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') === slug || String(x._id) === slug);
+    if (!match) return res.status(404).json({ message: 'Portfolio project not found.' });
+    res.json({ project: match, related: items.filter(x => String(x._id) !== String(match._id)).slice(0, 3) });
+  } catch (e) { res.status(503).json({ message: 'Website content is temporarily unavailable.' }); }
+});
+
 app.get('/api/public/content', async (req, res) => {
   try {
     const [services, portfolio, testimonials, faqs, banners, site] = await Promise.all([
