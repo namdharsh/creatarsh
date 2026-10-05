@@ -24,7 +24,9 @@ const corsOrigins = String(process.env.CORS_ORIGINS || '').split(',').map(v => v
 app.disable('x-powered-by');
 app.use(helmet({ crossOriginResourcePolicy: false, contentSecurityPolicy: false, referrerPolicy: { policy: 'strict-origin-when-cross-origin' } }));
 app.use(cors({ origin(origin, callback) {
-  if (!origin || corsOrigins.length === 0 || corsOrigins.includes(origin)) return callback(null, true);
+  // Public/customer API uses bearer tokens rather than credentialed cookies.
+  // Allow the Creatarsh frontend even when it is deployed separately from the API.
+  if (!origin || corsOrigins.length === 0 || corsOrigins.includes(origin) || origin.endsWith('.vercel.app') || origin.endsWith('.pages.dev') || origin.endsWith('.github.io')) return callback(null, true);
   return callback(new Error('CORS origin not allowed'));
 }, credentials: false }));
 app.use(express.json({ limit: '8mb' }));

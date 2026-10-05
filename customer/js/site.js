@@ -1,5 +1,14 @@
-const defaultApi='';
-const API=(window.CREATARSH_API_URL||defaultApi).replace(/\/$/,'')+'/api';
+const configuredApi=(window.CREATARSH_API_URL||'').replace(/\/$/,'');
+const sameOriginApi=location.origin.replace(/\/$/,'');
+// The customer site may be hosted separately from the Express API (for example
+// Vercel/GitHub Pages + Render). Prefer an explicit API URL, then same-origin,
+// then the default Render API used by the Creatarsh deployment.
+const API_CANDIDATES=[
+  configuredApi,
+  sameOriginApi,
+  'https://creatarsh.onrender.com'
+].filter((v,i,a)=>v && a.indexOf(v)===i).map(v=>v.endsWith('/api')?v:v+'/api');
+let activeApiBase=API_CANDIDATES[0]||'/api';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const slugifyClient=v=>String(v||'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
 const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
@@ -7,7 +16,30 @@ const token=()=>localStorage.getItem('cr_customer_token');
 const customer=()=>{try{return JSON.parse(localStorage.getItem('cr_customer')||'null')}catch{return null}};
 const save=(d)=>{localStorage.setItem('cr_customer_token',d.token);localStorage.setItem('cr_customer',JSON.stringify(d.customer));};
 const logout=()=>{localStorage.removeItem('cr_customer_token');localStorage.removeItem('cr_customer');location.href='/login';};
-async function api(path,opt={}){const h={'Content-Type':'application/json',...(opt.headers||{})};if(token())h.Authorization='Bearer '+token();const r=await fetch(API+path,{...opt,headers:h});let d={};try{d=await r.json()}catch{}if(!r.ok){const e=new Error(d.message||`Request failed (${r.status})`);e.status=r.status;throw e}return d}
+async function api(path,opt={}){
+  const h={'Content-Type':'application/json',...(opt.headers||{})};
+  if(token())h.Authorization='Bearer '+token();
+  let lastError=null;
+  const candidates=[activeApiBase,...API_CANDIDATES.filter(x=>x!==activeApiBase)];
+  for(const base of candidates){
+    try{
+      const r=await fetch(base+path,{...opt,headers:h});
+      let d={}; try{d=await r.json()}catch{}
+      // A 404 from a static host means the API is not hosted there. Try the
+      // configured/Render backend before surfacing the error to the customer.
+      if(r.status===404 && candidates.length>1 && base!==candidates[candidates.length-1]){lastError=new Error(d.message||'API route not found');continue;}
+      if(!r.ok){const e=new Error(d.message||`Request failed (${r.status})`);e.status=r.status;throw e}
+      activeApiBase=base;
+      return d;
+    }catch(e){
+      lastError=e;
+      if(e.name==='TypeError' || e.message==='Failed to fetch') continue;
+      if(e.status===404 && base!==candidates[candidates.length-1]) continue;
+      throw e;
+    }
+  }
+  throw lastError||new Error('Creatarsh API is unavailable.');
+}
 function nav(){
   const c=customer();
   const account=$('#accountLink');
