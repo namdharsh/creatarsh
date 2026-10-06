@@ -6,7 +6,8 @@ const sameOriginApi=location.origin.replace(/\/$/,'');
 const API_CANDIDATES=[
   configuredApi,
   sameOriginApi,
-  'https://creatarsh.onrender.com'
+  'https://creatarsh.onrender.com',
+  'https://creatarsh-api.onrender.com'
 ].filter((v,i,a)=>v && a.indexOf(v)===i).map(v=>v.endsWith('/api')?v:v+'/api');
 let activeApiBase=API_CANDIDATES[0]||'/api';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
