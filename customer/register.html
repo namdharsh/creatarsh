@@ -12,6 +12,8 @@
       try{
         const r=await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
         let data={}; try{data=await r.json()}catch{}
+        const contentType=(r.headers.get('content-type')||'').toLowerCase();
+        if(!contentType.includes('application/json')){last=new Error('API endpoint returned a non-JSON response');continue;}
         if(r.status===404){last=new Error(data.message||'API route not found');continue;}
         if(!r.ok){const e=new Error(data.message||('Request failed ('+r.status+')'));e.status=r.status;throw e;}
         return data;
@@ -24,8 +26,11 @@
     const button=form.querySelector('button[type=submit]'); button.disabled=true; status.textContent='Connecting to Creatarsh…'; status.className='status';
     try{
       const data=await request('/customer/register',Object.fromEntries(new FormData(form)));
-      localStorage.setItem('cr_customer_token',data.token);
-      localStorage.setItem('cr_customer',JSON.stringify(data.customer));
+      const token=data?.token||data?.accessToken||data?.jwt||data?.data?.token||data?.data?.accessToken;
+      const customer=data?.customer||data?.user||data?.client||data?.data?.customer||data?.data?.user;
+      if(!token||!customer) throw new Error('The authentication server returned an incomplete response.');
+      localStorage.setItem('cr_customer_token',token);
+      localStorage.setItem('cr_customer',JSON.stringify(customer));
       status.textContent='Login successful. Opening your account…';
       status.className='status success';
       window.location.replace('/account');

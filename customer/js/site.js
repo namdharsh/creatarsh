@@ -28,6 +28,15 @@ async function api(path,opt={}){
       let d={}; try{d=await r.json()}catch{}
       // A 404 from a static host means the API is not hosted there. Try the
       // configured/Render backend before surfacing the error to the customer.
+      // Some static hosts return the SPA/HTML shell with HTTP 200 for unknown
+      // /api routes. Treat a successful response without JSON as an API miss and
+      // continue to the next configured backend instead of reporting an
+      // "incomplete authentication response" to the customer.
+      const contentType=(r.headers.get('content-type')||'').toLowerCase();
+      if(!contentType.includes('application/json')){
+        lastError=new Error('API endpoint returned a non-JSON response');
+        continue;
+      }
       if(r.status===404 && candidates.length>1 && base!==candidates[candidates.length-1]){lastError=new Error(d.message||'API route not found');continue;}
       if(!r.ok){const e=new Error(d.message||`Request failed (${r.status})`);e.status=r.status;throw e}
       activeApiBase=base;
@@ -152,8 +161,9 @@ function initAccountAuthModal(){
     status.className='form-help';
     try{
       const data=await api('/customer/'+mode,{method:'POST',body:JSON.stringify(Object.fromEntries(new FormData(form)))});
-      if(!data?.token||!data?.customer) throw new Error('The server returned an incomplete authentication response.');
-      save(data);
+      const auth=normalizeAuthResponse(data);
+      if(!auth) throw new Error('The server returned an incomplete authentication response.');
+      save(auth);
       status.textContent='Success. Opening your account…';
       status.className='form-help success';
       close();
@@ -164,6 +174,13 @@ function initAccountAuthModal(){
     }finally{btn.disabled=false;}
   };
   render();
+}
+function normalizeAuthResponse(data){
+  if(!data || typeof data!=='object') return null;
+  const t=data.token||data.accessToken||data.jwt||data.data?.token||data.data?.accessToken;
+  const c=data.customer||data.user||data.client||data.data?.customer||data.data?.user;
+  if(!t||!c) return null;
+  return {token:t,customer:c};
 }
 function authPage(mode){const f=$('#authForm');if(!f)return;const c=customer();if(c&&token()){location.href='/account';return}f.innerHTML=mode==='login'?`<div class="field"><label>Email</label><input name="email" type="email" required placeholder="you@company.com"></div><div class="field"><label>Password</label><input name="password" type="password" required placeholder="Your password"></div><button class="btn primary" style="width:100%">Sign in ↗</button>`:`<div class="form-grid"><div class="field"><label>Name</label><input name="name" required placeholder="Your name"></div><div class="field"><label>Email</label><input name="email" type="email" required placeholder="you@company.com"></div><div class="field"><label>Phone</label><input name="phone" placeholder="+91"></div><div class="field"><label>Company</label><input name="company" placeholder="Company name"></div><div class="field full"><label>Password</label><input name="password" type="password" minlength="8" required placeholder="Minimum 8 characters"></div></div><button class="btn primary" style="width:100%">Create account ↗</button>`;f.onsubmit=async e=>{e.preventDefault();const st=$('#authStatus'),b=f.querySelector('button');b.disabled=true;st.textContent='Please wait…';try{save(await api('/customer/'+mode,{method:'POST',body:JSON.stringify(Object.fromEntries(new FormData(f)))}));location.href='/account'}catch(err){st.textContent=err.message}finally{b.disabled=false}}}
 async function account(){
