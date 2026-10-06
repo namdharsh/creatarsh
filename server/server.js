@@ -34,7 +34,7 @@ app.use(cors({ origin(origin, callback) {
   if (!origin || corsOrigins.length === 0 || corsOrigins.includes(origin) || origin.endsWith('.vercel.app') || origin.endsWith('.pages.dev') || origin.endsWith('.github.io')) return callback(null, true);
   return callback(new Error('CORS origin not allowed'));
 }, credentials: false }));
-app.use(express.json({ limit: '8mb' }));
+app.use(express.json({ limit: '8mb', verify: (req, res, buf) => { if (req.originalUrl === '/api/webhooks/razorpay') req.rawBody = Buffer.from(buf); } }));
 app.use(express.urlencoded({ extended: true, limit: '8mb' }));
 
 // Serve the customer website and manager assets from the same Express service.
@@ -60,6 +60,8 @@ app.get('/portfolio', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'work.h
 app.get('/portfolio/:slug', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'portfolio.html')));
 app.get('/about', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'about.html')));
 app.get('/contact', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'contact.html')));
+app.get('/support', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'support.html')));
+app.get('/grievance', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'grievance.html')));
 app.get('/faq', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'faq.html')));
 app.get('/buy', (req,res)=>res.sendFile(path.join(CUSTOMER_DIR,'buy.html')));
 app.get('/start-project', (req,res)=>res.redirect('/buy'));
@@ -182,7 +184,7 @@ app.get('/api/public/payment-config', (req,res)=>res.json({provider:'razorpay',e
 
 app.get('/api/public/pricing', async (req,res) => { try { const packages=await ServicePackage.find({active:true}).sort({order:1}); res.json({version:'2026-10',currency:'INR',packages}); } catch(e){ res.status(503).json({message:'Pricing is temporarily unavailable.'}); } });
 
-app.post('/api/public/orders', async (req,res) => { if(!dbReady)return res.status(503).json({message:'Ordering is temporarily unavailable.'}); const b=req.body||{}; if(!b.name||!b.email||!b.productCode||String(b.password||'').length<8||!b.terms)return res.status(400).json({message:'Name, email, product, password and acceptance of the Terms/Privacy notice are required.'}); const product=await ServicePackage.findOne({code:b.productCode,active:true}); if(!product)return res.status(400).json({message:'Invalid product.'}); try{let c=await Customer.findOne({email:String(b.email).trim().toLowerCase()}); if(c)return res.status(409).json({message:'An account with this email already exists. Please sign in first, then place the order from your account.'}); c=await Customer.create({name:String(b.name).trim(),email:String(b.email).trim().toLowerCase(),phone:b.phone,company:b.company,passwordHash:await bcrypt.hash(String(b.password),12),lastLoginAt:new Date()}); const termsVersion=b.termsVersion||'2026-10', privacyVersion=b.privacyVersion||'2026-10'; const o=await Order.create({orderId:id('ORD'),customer:c._id,productType:'SERVICE',productName:b.productName,amount:product.price,status:'PENDING_PAYMENT',business:b.company,requirements:b.requirements,acceptedTermsVersion:termsVersion,privacyNoticeVersion:privacyVersion}); await Consent.create({customer:c._id,type:'TERMS',version:termsVersion,granted:true,source:'public-order',grantedAt:new Date()}); await Consent.create({customer:c._id,type:'PRIVACY_NOTICE',version:privacyVersion,granted:true,source:'public-order',grantedAt:new Date()}); if (b.marketingConsent === true || b.marketingConsent === 'true' || b.marketingConsent === 'on') await Consent.create({customer:c._id,type:'MARKETING',version:'2026-10',granted:true,source:'public-order',grantedAt:new Date()}); await Notification.create({recipientType:'customer',recipient:c._id,title:'Order created',message:`Order ${o.orderId} has been created. Your next step is payment/onboarding.`,link:'/account'}); res.status(201).json({orderId:o.orderId,amount:o.amount,customerId:c._id,token:signCustomer(c),customer:{id:c._id,name:c.name,email:c.email,phone:c.phone,company:c.company}});}catch(e){console.error('Order error',e.message);res.status(400).json({message:'Could not create order.'});} });
+app.post('/api/public/orders', async (req,res) => { if(!dbReady)return res.status(503).json({message:'Ordering is temporarily unavailable.'}); const b=req.body||{}; if(!b.name||!b.email||!b.productCode||String(b.password||'').length<8||!b.terms||!b.privacy)return res.status(400).json({message:'Name, email, product, password, Terms acceptance and Privacy acknowledgement are required.'}); const product=await ServicePackage.findOne({code:b.productCode,active:true}); if(!product)return res.status(400).json({message:'Invalid product.'}); try{let c=await Customer.findOne({email:String(b.email).trim().toLowerCase()}); if(c)return res.status(409).json({message:'An account with this email already exists. Please sign in first, then place the order from your account.'}); c=await Customer.create({name:String(b.name).trim(),email:String(b.email).trim().toLowerCase(),phone:b.phone,company:b.company,passwordHash:await bcrypt.hash(String(b.password),12),lastLoginAt:new Date()}); const termsVersion=b.termsVersion||'2026-10', privacyVersion=b.privacyVersion||'2026-10'; const o=await Order.create({orderId:id('ORD'),customer:c._id,productType:'SERVICE',productName:product.name,amount:product.price,status:'PENDING_PAYMENT',business:b.company,requirements:b.requirements,acceptedTermsVersion:termsVersion,privacyNoticeVersion:privacyVersion}); await Consent.create({customer:c._id,type:'TERMS',version:termsVersion,granted:true,source:'public-order',grantedAt:new Date()}); await Consent.create({customer:c._id,type:'PRIVACY_NOTICE',version:privacyVersion,granted:true,source:'public-order',grantedAt:new Date()}); if (b.marketingConsent === true || b.marketingConsent === 'true' || b.marketingConsent === 'on') await Consent.create({customer:c._id,type:'MARKETING',version:'2026-10',granted:true,source:'public-order',grantedAt:new Date()}); await Notification.create({recipientType:'customer',recipient:c._id,title:'Order created',message:`Order ${o.orderId} has been created. Your next step is payment/onboarding.`,link:'/account'}); res.status(201).json({orderId:o.orderId,amount:o.amount,customerId:c._id,token:signCustomer(c),customer:{id:c._id,name:c.name,email:c.email,phone:c.phone,company:c.company}});}catch(e){console.error('Order error',e.message);res.status(400).json({message:'Could not create order.'});} });
 app.get('/api/public/portfolio/:slug', async (req, res) => {
   if (!dbReady) return res.status(503).json({ message: 'Website content is temporarily unavailable because the database is not connected.' });
   try {
@@ -263,7 +265,64 @@ app.get('/api/customer/contracts',requireCustomer,async(req,res)=>res.json(await
 app.post('/api/customer/contracts/:id/accept',requireCustomer,async(req,res)=>{const c=await Contract.findOne({_id:req.params.id,customer:req.auth.sub});if(!c)return res.status(404).json({message:'Contract not found.'});if(c.status!=='SENT')return res.status(400).json({message:'This contract is not awaiting acceptance.'});c.status='ACCEPTED';c.acceptedAt=new Date();c.acceptedIp=req.ip;c.save();await Notification.create({recipientType:'customer',recipient:c.customer,title:'Contract accepted',message:`${c.title} has been accepted.`,link:'/account'});res.json(c);});
 app.post('/api/customer/payments/razorpay/order',requireCustomer,async(req,res)=>{if(!RAZORPAY_KEY_ID||!RAZORPAY_KEY_SECRET)return res.status(503).json({message:'Razorpay is not configured on the server.'});const requestedAmount=Number(req.body.amount||0);if(requestedAmount<=0)return res.status(400).json({message:'Invalid payment amount.'});const order=await Order.findOne({$or:[{_id:req.body.orderId},{orderId:req.body.orderId}],customer:req.auth.sub}).catch(()=>null);if(!order)return res.status(404).json({message:'Order not found.'});const amount=Math.round(Number(order.amount||0)*100);if(amount<=0)return res.status(400).json({message:'Order amount is invalid.'});if(order.status==='PAID')return res.status(400).json({message:'Order is already paid.'});const rp=await fetch(`${RAZORPAY_API}/orders`,{method:'POST',headers:{Authorization:'Basic '+Buffer.from(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`).toString('base64'),'Content-Type':'application/json'},body:JSON.stringify({amount,currency:'INR',receipt:order.orderId,payment_capture:1,notes:{orderId:String(order._id)}})});const data=await rp.json();if(!rp.ok)return res.status(502).json({message:data.error?.description||'Could not create Razorpay order.'});order.razorpayOrderId=data.id;await order.save();res.json({keyId:RAZORPAY_KEY_ID,orderId:data.id,amount:data.amount,currency:data.currency,customerId:req.auth.sub});});
 app.post('/api/customer/payments/razorpay/verify',requireCustomer,async(req,res)=>{if(!RAZORPAY_KEY_SECRET)return res.status(503).json({message:'Razorpay is not configured on the server.'});const {razorpay_order_id,razorpay_payment_id,razorpay_signature}=req.body||{};if(!razorpay_order_id||!razorpay_payment_id||!razorpay_signature)return res.status(400).json({message:'Incomplete Razorpay verification payload.'});const expected=crypto.createHmac('sha256',RAZORPAY_KEY_SECRET).update(`${razorpay_order_id}|${razorpay_payment_id}`).digest('hex');const sig=String(razorpay_signature);if(sig.length!==expected.length||!crypto.timingSafeEqual(Buffer.from(expected),Buffer.from(sig)))return res.status(400).json({message:'Payment signature verification failed.'});const order=await Order.findOne({razorpayOrderId:razorpay_order_id,customer:req.auth.sub});if(!order)return res.status(404).json({message:'Order not found.'});order.status='PAID';order.razorpayPaymentId=razorpay_payment_id;order.razorpaySignature=razorpay_signature;await order.save();const existing=await Payment.findOne({transactionId:razorpay_payment_id});let payment=existing;if(!payment){payment=await Payment.create({transactionId:razorpay_payment_id,customer:order.customer,amount:order.amount,gateway:'Razorpay',status:'SUCCESS',paidAt:new Date(),note:`Verified against Razorpay order ${razorpay_order_id}`});}let invoice=await Invoice.findOne({customer:order.customer,notes:{$regex:order.orderId,$options:'i'}});if(!invoice){invoice=await Invoice.create({invoiceId:id('INV'),customer:order.customer,invoiceDate:new Date(),businessDetails:{tradeName:'Creatarsh',email:'creatarshbusiness@gmail.com',phone:'7566743098'},customerBilling:{name:(await Customer.findById(order.customer)).name,email:(await Customer.findById(order.customer)).email},items:[{name:order.productName,description:'Creatarsh service purchase',quantity:1,rate:order.amount,price:order.amount,taxRate:0}],subtotal:order.amount,total:order.amount,status:'PAID',paymentMethod:'Razorpay',transactionReference:razorpay_payment_id,notes:`Generated from ${order.orderId}`});}payment.invoice=invoice._id;await payment.save();await Invoice.findByIdAndUpdate(invoice._id,{$set:{status:'PAID',paymentMethod:'Razorpay',transactionReference:razorpay_payment_id}});await Notification.create({recipientType:'customer',recipient:order.customer,title:'Payment confirmed',message:`Payment for ${order.productName} was verified successfully. Invoice ${invoice.invoiceId} is available.`,link:'/account'});res.json({ok:true,order,invoice,payment});});
-app.post('/api/webhooks/razorpay',async(req,res)=>{if(!RAZORPAY_WEBHOOK_SECRET)return res.status(503).json({message:'Webhook secret is not configured.'});const signature=req.get('X-Razorpay-Signature')||'';const expected=crypto.createHmac('sha256',RAZORPAY_WEBHOOK_SECRET).update(JSON.stringify(req.body)).digest('hex');if(signature!==expected)return res.status(400).json({message:'Invalid webhook signature.'});const event=req.body.event;const p=req.body.payload?.payment?.entity;if(['payment.captured','order.paid'].includes(event)&&p?.id){const existing=await Payment.findOne({transactionId:p.id});if(!existing){const order=await Order.findOne({razorpayOrderId:p.order_id});if(order){order.status='PAID';order.razorpayPaymentId=p.id;await order.save();await Payment.create({transactionId:p.id,customer:order.customer,amount:Number(p.amount||order.amount*100)/100,gateway:'Razorpay',status:'SUCCESS',paidAt:new Date(),note:`Webhook ${event}`});}}}res.json({ok:true});});
+app.post('/api/webhooks/razorpay', async (req, res) => {
+  if (!RAZORPAY_WEBHOOK_SECRET) return res.status(503).json({ message: 'Webhook secret is not configured.' });
+  const signature = req.get('X-Razorpay-Signature') || '';
+  const raw = req.rawBody || Buffer.from(JSON.stringify(req.body));
+  const expected = crypto.createHmac('sha256', RAZORPAY_WEBHOOK_SECRET).update(raw).digest('hex');
+  if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+    return res.status(400).json({ message: 'Invalid webhook signature.' });
+  }
+  try {
+    const event = req.body.event;
+    const paymentEntity = req.body.payload?.payment?.entity;
+    if (['payment.captured', 'order.paid'].includes(event) && paymentEntity?.id) {
+      const existing = await Payment.findOne({ transactionId: paymentEntity.id });
+      if (!existing) {
+        const order = await Order.findOne({ razorpayOrderId: paymentEntity.order_id });
+        if (order) {
+          order.status = 'PAID';
+          order.razorpayPaymentId = paymentEntity.id;
+          await order.save();
+          const payment = await Payment.create({
+            transactionId: paymentEntity.id,
+            customer: order.customer,
+            amount: Number(paymentEntity.amount || order.amount * 100) / 100,
+            gateway: 'Razorpay',
+            status: 'SUCCESS',
+            paidAt: new Date(),
+            note: `Webhook ${event}`
+          });
+          let invoice = await Invoice.findOne({ customer: order.customer, notes: { $regex: order.orderId, $options: 'i' } });
+          if (!invoice) {
+            const c = await Customer.findById(order.customer).select('name email phone company');
+            invoice = await Invoice.create({
+              invoiceId: id('INV'), customer: order.customer, invoiceDate: new Date(),
+              businessDetails: { tradeName: 'Creatarsh', email: 'creatarshbusiness@gmail.com', phone: '7566743098' },
+              customerBilling: { name: c?.name || '', company: c?.company || '', email: c?.email || '', phone: c?.phone || '' },
+              items: [{ name: order.productName, description: 'Creatarsh service purchase', quantity: 1, rate: order.amount, price: order.amount, taxRate: 0 }],
+              subtotal: order.amount, total: order.amount, status: 'PAID', paymentMethod: 'Razorpay',
+              transactionReference: paymentEntity.id, notes: `Generated from ${order.orderId}`
+            });
+          }
+          payment.invoice = invoice._id;
+          await payment.save();
+          await Invoice.findByIdAndUpdate(invoice._id, { $set: { status: 'PAID', paymentMethod: 'Razorpay', transactionReference: paymentEntity.id } });
+          await Notification.create({
+            recipientType: 'customer', recipient: order.customer,
+            title: 'Payment confirmed',
+            message: `Payment for ${order.productName} was verified successfully. Invoice ${invoice.invoiceId} is available.`,
+            link: '/account'
+          });
+        }
+      }
+    }
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error('Razorpay webhook processing failed:', e.message);
+    return res.status(500).json({ message: 'Webhook received but could not be processed.' });
+  }
+});
 
 // ---------- Manager APIs ----------
 app.get('/api/customer/orders',requireCustomer,async(req,res)=>res.json(await Order.find({customer:req.auth.sub}).sort({createdAt:-1})));
