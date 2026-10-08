@@ -186,8 +186,19 @@ function authPage(mode){const f=$('#authForm');if(!f)return;const c=customer();i
 async function account(){
   const root=$('#accountRoot'); if(!root)return;
   if(!customer()||!token()){root.innerHTML='<div class="empty">Please sign in to access your client account.<br><a class="btn primary" href="/login" style="margin-top:16px">Client Login ↗</a></div>';return;}
+  root.innerHTML='<div class="empty">Loading your client workspace…</div>';
   try{
-    const [me,p,q,i,o,t,a,d,pr,c]=await Promise.all([api('/customer/me'),api('/customer/projects'),api('/customer/quotes'),api('/customer/invoices'),api('/customer/orders'),api('/customer/tickets'),api('/customer/approvals'),api('/customer/documents'),api('/customer/privacy/requests'),api('/customer/consents'),api('/customer/contracts')]);
+    // Load the authenticated customer first. The remaining dashboard panels are
+    // independent, so one optional/older API route must never blank the entire
+    // account page. This also makes the portal resilient during API deployments.
+    const me=await api('/customer/me');
+    const safe=async(path,fallback=[])=>{try{return await api(path)}catch(err){if(err.status===401)throw err;return fallback}};
+    const [p,q,i,o,t,a,d,pr,c]=await Promise.all([
+      safe('/customer/projects'),safe('/customer/quotes'),safe('/customer/invoices'),
+      safe('/customer/orders'),safe('/customer/tickets'),safe('/customer/approvals'),
+      safe('/customer/documents'),safe('/customer/privacy/requests'),safe('/customer/consents'),
+      safe('/customer/contracts')
+    ]);
     const due=i.filter(x=>x.status!=='PAID').reduce((s,x)=>s+Number(x.total||0),0);
     root.innerHTML=`<div class="portal-shell"><aside class="portal-nav" aria-label="Customer account navigation">
       <button class="active" data-tab="overview">⌂ Overview</button><button data-tab="projects">▣ Projects</button><button data-tab="orders">🛒 Orders</button><button data-tab="contracts">✎ Contracts</button><button data-tab="support">? Support</button><button data-tab="documents">▤ Documents</button><button data-tab="privacy">⚖ Privacy</button><button data-tab="profile">◎ Profile</button><button id="logout">↪ Sign out</button>
@@ -209,7 +220,11 @@ async function account(){
     $$('[data-accept-contract]').forEach(b=>b.onclick=async()=>{if(!confirm('I have reviewed and agree to this agreement. Continue?'))return;try{await api('/customer/contracts/'+b.dataset.acceptContract+'/accept',{method:'POST'});location.reload()}catch(err){alert(err.message)}});
     $('#privacyForm').onsubmit=async e=>{e.preventDefault();try{await api('/customer/privacy/requests',{method:'POST',body:JSON.stringify(Object.fromEntries(new FormData(e.target)))});$('#privacyStatus').textContent='Privacy request submitted ✓';e.target.reset();}catch(err){$('#privacyStatus').textContent=err.message}};
     $('#exportData').onclick=async()=>{try{const data=await api('/customer/profile/export');const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='creatarsh-account-data.json';a.click();URL.revokeObjectURL(a.href)}catch(err){alert(err.message)}};
-  }catch(e){if(e.status===401)logout();else root.innerHTML=`<div class="empty">${esc(e.message)}</div>`}
+  }catch(e){
+    if(e.status===401){ logout(); return; }
+    root.innerHTML=`<div class="empty"><span class="eyebrow">CLIENT PORTAL</span><h3 style="margin-top:10px">Your account is temporarily unavailable.</h3><p class="muted">We could not connect to the Creatarsh account service right now. Your account has not been deleted or changed.</p><div class="actions" style="margin-top:18px"><button class="btn primary" id="retryAccount">Retry ↻</button><a class="btn" href="/buy">Browse packages</a><a class="btn" href="/contact">Contact Creatarsh</a></div></div>`;
+    const retry=$('#retryAccount'); if(retry)retry.onclick=()=>account();
+  }
 }
 function switchTab(tab){$$('.portal-nav button[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));$$('.portal-tab').forEach(x=>x.classList.toggle('active',x.id==='tab-'+tab));}
 async function respondQuote(id,status){try{await api('/customer/quotes/'+id+'/respond',{method:'POST',body:JSON.stringify({status})});location.reload()}catch(e){alert(e.message)}}
