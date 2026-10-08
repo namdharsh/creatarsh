@@ -1,29 +1,40 @@
-# Creatarsh production deployment
+# Creatarsh Production Deployment Checklist
 
-## Render environment variables
-Set these on the Render service:
+## Render
+Deploy the **contents of this ZIP as the repository root**.
 
+Build command:
+`npm install --no-audit --no-fund`
+
+Start command:
+`npm start`
+
+Health check:
+`/api/health`
+
+## Required environment variables
 - `NODE_ENV=production`
-- `MONGODB_URI=<MongoDB Atlas connection string>`
-- `MANAGER_JWT_SECRET=<long random secret>`
-- `CUSTOMER_JWT_SECRET=<different long random secret>`
-- `MANAGER_INITIAL_USERNAME=<manager username>`
-- `MANAGER_INITIAL_PASSWORD=<strong manager password>`
+- `MONGODB_URI`
+- `MANAGER_JWT_SECRET`
+- `CUSTOMER_JWT_SECRET`
+- `MANAGER_INITIAL_USERNAME`
+- `MANAGER_INITIAL_PASSWORD`
+- `RAZORPAY_KEY_ID`
+- `RAZORPAY_KEY_SECRET`
+- `RAZORPAY_WEBHOOK_SECRET`
 - `CORS_ORIGINS=https://creatarsh.in,https://www.creatarsh.in`
-- `RAZORPAY_KEY_ID=<live Razorpay key id>`
-- `RAZORPAY_KEY_SECRET=<live Razorpay key secret>`
-- `RAZORPAY_WEBHOOK_SECRET=<Razorpay webhook secret>`
 
-The service starts with `npm start --prefix server` and the customer website is served by the same Express service.
-
-## Verify after deployment
-
-1. Open `/api/health` and confirm `ok: true`.
-2. Confirm `database: true`.
-3. Open `/services` and `/buy`.
-4. Register a test customer.
-5. Select a package and confirm the booking amount shown.
-6. Test Razorpay in test mode before switching to live keys.
-7. Confirm the paid order, invoice and enquiry appear in Manager.
-8. Send a test contract from Manager and accept it from Customer.
-9. Test project, quote, invoice, document and support flows.
+## First checks after deployment
+1. Open `/api/health` and confirm `ok: true` and `database: true`.
+2. Open `/` and `/buy`.
+3. Open `/login` and `/register`.
+4. Open `/manager/` and sign in.
+5. In Manager → Service Catalogue, confirm package prices and minimum booking charges.
+6. Use Razorpay test credentials first.
+7. Create a test customer account.
+8. Select a package, submit requirements and verify that only the configured minimum booking charge is sent to Razorpay.
+9. Complete the test payment.
+10. Confirm an `ENQ...` lead appears in Manager → Leads / Workflow.
+11. Confirm the booking payment and invoice appear in the customer account.
+12. Configure the Razorpay webhook URL as `https://YOUR-DOMAIN/api/webhooks/razorpay` with the same webhook secret.
+13. Only after test-mode verification, switch Razorpay to live keys.

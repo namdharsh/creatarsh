@@ -2,8 +2,8 @@ services:
   - type: web
     name: creatarsh
     runtime: node
-    buildCommand: npm install --prefix server
-    startCommand: npm start --prefix server
+    buildCommand: npm install --no-audit --no-fund
+    startCommand: npm start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV

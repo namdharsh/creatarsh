@@ -1,9 +1,10 @@
 {
-  "name": "creatarsh-api",
-  "version": "0.2.0",
-  "private": true,
-  "scripts": {"start":"node server.js","dev":"node --watch server.js"},
-  "dependencies": {
+  "name":"creatarsh",
+  "version":"1.0.0",
+  "private":true,
+  "engines":{"node":">=20"},
+  "scripts":{"start":"node server/server.js","dev":"node --watch server/server.js"},
+  "dependencies":{
     "bcryptjs":"^2.4.3",
     "cors":"^2.8.5",
     "dotenv":"^16.4.5",

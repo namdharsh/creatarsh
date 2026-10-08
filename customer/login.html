@@ -5,8 +5,7 @@
     .filter(Boolean).map(v=>v.endsWith('/api')?v:v+'/api').filter((v,i,a)=>a.indexOf(v)===i);
   const form=document.getElementById('authForm'), status=document.getElementById('authStatus');
   const token=localStorage.getItem('cr_customer_token');
-  const next=new URLSearchParams(location.search).get('next')||'/account';
-  if(token){ window.location.replace(next); return; }
+  if(token){ window.location.replace('/account'); return; }
   async function request(path,body){
     let last;
     for(const base of bases){
@@ -34,7 +33,7 @@
       localStorage.setItem('cr_customer',JSON.stringify(customer));
       status.textContent='Login successful. Opening your account…';
       status.className='status success';
-      window.location.replace(next);
+      window.location.replace('/account');
     }catch(err){
       status.textContent=err.message||'Unable to sign in. Please try again.';
       status.className='status error';
