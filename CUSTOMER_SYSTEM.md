@@ -39,3 +39,8 @@ This version extends the existing Creatarsh customer website and Express/MongoDB
 The public customer website is database-driven. Services, banners, portfolio projects, testimonials, FAQs, and website CMS copy are loaded from MongoDB through `/api/public/content` and managed from the Manager CMS. Static service/portfolio HTML demo pages are not used for public routes.
 
 MongoDB is configured only through the server environment variable `MONGODB_URI`. Do not put the MongoDB connection string in frontend JavaScript or HTML. If `MONGODB_URI` is missing, the website intentionally shows a temporary content-unavailable state instead of silently displaying stale hardcoded service content.
+
+
+## Package booking flow
+
+Customer selects a server-managed package, signs in, submits requirements, accepts Terms/Privacy, pays the manager-configured minimum booking charge through Razorpay, and after verified payment Creatarsh automatically creates a CRM enquiry. The full package value remains attached to the order for the manager to scope, contract and quote the remaining work.
