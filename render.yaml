@@ -20,9 +20,3 @@ services:
         sync: false
       - key: CORS_ORIGINS
         value: https://creatarsh.in,https://www.creatarsh.in
-      - key: RAZORPAY_KEY_ID
-        sync: false
-      - key: RAZORPAY_KEY_SECRET
-        sync: false
-      - key: RAZORPAY_WEBHOOK_SECRET
-        sync: false

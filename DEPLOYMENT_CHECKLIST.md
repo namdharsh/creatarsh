@@ -19,22 +19,19 @@ Health check:
 - `CUSTOMER_JWT_SECRET`
 - `MANAGER_INITIAL_USERNAME`
 - `MANAGER_INITIAL_PASSWORD`
-- `RAZORPAY_KEY_ID`
-- `RAZORPAY_KEY_SECRET`
-- `RAZORPAY_WEBHOOK_SECRET`
 - `CORS_ORIGINS=https://creatarsh.in,https://www.creatarsh.in`
 
-## First checks after deployment
+## Booking-only flow
 1. Open `/api/health` and confirm `ok: true` and `database: true`.
 2. Open `/` and `/buy`.
 3. Open `/login` and `/register`.
 4. Open `/manager/` and sign in.
-5. In Manager → Service Catalogue, confirm package prices and minimum booking charges.
-6. Use Razorpay test credentials first.
-7. Create a test customer account.
-8. Select a package, submit requirements and verify that only the configured minimum booking charge is sent to Razorpay.
-9. Complete the test payment.
-10. Confirm an `ENQ...` lead appears in Manager → Leads / Workflow.
-11. Confirm the booking payment and invoice appear in the customer account.
-12. Configure the Razorpay webhook URL as `https://YOUR-DOMAIN/api/webhooks/razorpay` with the same webhook secret.
-13. Only after test-mode verification, switch Razorpay to live keys.
+5. In Manager → Service Catalogue, confirm package prices and active/hidden status.
+6. Create a test customer account.
+7. Select a package and submit the booking enquiry.
+8. Confirm an `ENQ...` lead appears in Manager → Leads / Workflow.
+9. Confirm the booking appears in the customer's Orders/account area.
+10. Confirm Creatarsh can contact the customer and then prepare quotation, contract, project and other documents manually.
+
+## Online payment
+Online payment is intentionally **disabled** in this build. No payment is collected when a customer books a package. Payment terms can be discussed and recorded later as part of the quotation/contract/project process.
