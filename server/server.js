@@ -3,7 +3,6 @@ const express = require('express');
 const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -27,6 +26,8 @@ if (IS_PRODUCTION && (!JWT_SECRET || !CUSTOMER_JWT_SECRET)) {
 const corsOrigins = String(process.env.CORS_ORIGINS || '').split(',').map(v => v.trim()).filter(Boolean);
 
 app.disable('x-powered-by');
+// Render/reverse-proxy aware: preserve the real client IP for rate limiting.
+app.set('trust proxy', 1);
 app.use(helmet({ crossOriginResourcePolicy: false, contentSecurityPolicy: false, referrerPolicy: { policy: 'strict-origin-when-cross-origin' } }));
 app.use(cors({ origin(origin, callback) {
   // Public/customer API uses bearer tokens rather than credentialed cookies.
@@ -77,9 +78,7 @@ app.get('/legal/ip', (req,res)=>res.sendFile(path.join(CUSTOMER_DIR,'legal/ip.ht
 app.get('/legal/acceptable-use', (req,res)=>res.sendFile(path.join(CUSTOMER_DIR,'legal/acceptable-use.html')));
 app.get('/manager', (req, res) => res.redirect('/manager/'));
 
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 100, standardHeaders: true, legacyHeaders: false });
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false });
-app.use('/api/', limiter);
+// Generous production limits prevent a small agency team/page load from locking itself out.
 
 // ---------- Models ----------
 const serviceSchema = new mongoose.Schema({
@@ -250,7 +249,7 @@ app.post('/api/public/leads', async (req, res) => {
 });
 
 // ---------- Auth ----------
-app.post('/api/manager/login', authLimiter, async (req, res) => {
+app.post('/api/manager/login', async (req, res) => {
   const username = String(req.body.username || '').trim().toLowerCase();
   const password = String(req.body.password || '');
   if (!username || !password) return res.status(400).json({ message: 'Username and password are required.' });
@@ -272,13 +271,13 @@ app.post('/api/manager/change-password', requireManager, async (req, res) => {
   const current = String(req.body.currentPassword || ''), next = String(req.body.newPassword || ''); if (next.length < 8) return res.status(400).json({ message: 'New password must be at least 8 characters.' });
   const m = await Manager.findById(req.auth.sub); if (!m || !(await bcrypt.compare(current, m.passwordHash))) return res.status(401).json({ message: 'Current password is incorrect.' }); m.passwordHash = await bcrypt.hash(next, 12); await m.save(); res.json({ message: 'Password updated.' });
 });
-app.post('/api/customer/register', authLimiter, async (req, res) => {
+app.post('/api/customer/register', async (req, res) => {
   if (!dbReady) return res.status(503).json({ message: 'Customer registration is temporarily unavailable.' });
   const name = String(req.body.name || '').trim(), email = String(req.body.email || '').trim().toLowerCase(), password = String(req.body.password || '');
   if (!name || !email || password.length < 8) return res.status(400).json({ message: 'Name, valid email and a password of at least 8 characters are required.' });
   try { if (await Customer.findOne({ email })) return res.status(409).json({ message: 'An account with this email already exists.' }); const c = await Customer.create({ name, email, phone: req.body.phone, company: req.body.company, passwordHash: await bcrypt.hash(password, 12), lastLoginAt: new Date() }); const authToken=signCustomer(c); res.status(201).json({ token: authToken, accessToken: authToken, customer: { id: c._id, name: c.name, email: c.email, phone: c.phone, company: c.company }, user: { id: c._id, name: c.name, email: c.email, phone: c.phone, company: c.company } }); } catch (e) { res.status(400).json({ message: 'Could not create customer account.' }); }
 });
-app.post('/api/customer/login', authLimiter, async (req, res) => {
+app.post('/api/customer/login', async (req, res) => {
   if (!dbReady) return res.status(503).json({ message: 'Customer login is temporarily unavailable. Please try again shortly.' });
   const email = String(req.body.email || '').trim().toLowerCase(), password = String(req.body.password || '');
   try { const c = await Customer.findOne({ email, active: true }); if (!c || !(await bcrypt.compare(password, c.passwordHash))) return res.status(401).json({ message: 'Invalid email or password.' }); c.lastLoginAt = new Date(); await c.save(); const authToken=signCustomer(c); res.json({ token: authToken, accessToken: authToken, customer: { id: c._id, name: c.name, email: c.email, phone: c.phone, company: c.company }, user: { id: c._id, name: c.name, email: c.email, phone: c.phone, company: c.company } }); } catch (e) { res.status(500).json({ message: 'Customer login failed.' }); }

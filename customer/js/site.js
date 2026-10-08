@@ -38,7 +38,15 @@ async function api(path,opt={}){
         continue;
       }
       if(r.status===404 && candidates.length>1 && base!==candidates[candidates.length-1]){lastError=new Error(d.message||'API route not found');continue;}
-      if(!r.ok){const e=new Error(d.message||`Request failed (${r.status})`);e.status=r.status;throw e}
+      if(!r.ok){
+        const e=new Error(d.message||`Request failed (${r.status})`);
+        e.status=r.status;
+        if([404,429,502,503,504].includes(r.status) && base!==candidates[candidates.length-1]){
+          lastError=e;
+          continue;
+        }
+        throw e;
+      }
       activeApiBase=base;
       return d;
     }catch(e){

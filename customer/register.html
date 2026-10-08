@@ -14,10 +14,10 @@
         let data={}; try{data=await r.json()}catch{}
         const contentType=(r.headers.get('content-type')||'').toLowerCase();
         if(!contentType.includes('application/json')){last=new Error('API endpoint returned a non-JSON response');continue;}
-        if(r.status===404){last=new Error(data.message||'API route not found');continue;}
+        if([404,429,502,503,504].includes(r.status)){last=new Error(data.message||('Request failed ('+r.status+')'));continue;}
         if(!r.ok){const e=new Error(data.message||('Request failed ('+r.status+')'));e.status=r.status;throw e;}
         return data;
-      }catch(e){last=e;if(e.name==='TypeError'||e.message==='Failed to fetch'||e.status===404)continue;throw e;}
+      }catch(e){last=e;if(e.name==='TypeError'||e.message==='Failed to fetch'||[404,429,502,503,504].includes(e.status))continue;throw e;}
     }
     throw last||new Error('Creatarsh API is unavailable.');
   }
