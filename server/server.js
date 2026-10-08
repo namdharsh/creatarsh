@@ -383,4 +383,4 @@ app.use((err, req, res, next) => {
   if (res.headersSent) return next(err);
   res.status(500).json({ message: 'Something went wrong on the server.' });
 });
-app.listen(PORT, () => console.log(`Creatarsh server running on port ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`Creatarsh server running on 0.0.0.0:${PORT}`));

@@ -2,12 +2,15 @@ services:
   - type: web
     name: creatarsh
     runtime: node
+    rootDir: .
     buildCommand: npm install --no-audit --no-fund
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: 20
       - key: MONGODB_URI
         sync: false
       - key: MANAGER_JWT_SECRET
