@@ -21,17 +21,15 @@ Health check:
 - `MANAGER_INITIAL_PASSWORD`
 - `CORS_ORIGINS=https://creatarsh.in,https://www.creatarsh.in`
 
-## Booking-only flow
-1. Open `/api/health` and confirm `ok: true` and `database: true`.
-2. Open `/` and `/buy`.
-3. Open `/login` and `/register`.
-4. Open `/manager/` and sign in.
-5. In Manager → Service Catalogue, confirm package prices and active/hidden status.
-6. Create a test customer account.
-7. Select a package and submit the booking enquiry.
-8. Confirm an `ENQ...` lead appears in Manager → Leads / Workflow.
-9. Confirm the booking appears in the customer's Orders/account area.
-10. Confirm Creatarsh can contact the customer and then prepare quotation, contract, project and other documents manually.
+## Staging acceptance first
+Follow `PHASE_12_AUDIT_REPORT.md` and complete every staging acceptance item before enabling live traffic or payments.
 
-## Online payment
-Online payment is intentionally **disabled** in this build. No payment is collected when a customer books a package. Payment terms can be discussed and recorded later as part of the quotation/contract/project process.
+## Package booking and Razorpay sandbox
+1. Open `/api/health` and confirm `ok: true` and `database: true`.
+2. Open `/`, `/buy`, `/login` and `/register`.
+3. Sign in with a test customer and create a sandbox payment order.
+4. Verify that the server calculates the amount from an active database plan.
+5. Test captured, failed, duplicate and invalid-signature webhook cases in Razorpay Test Mode.
+6. Confirm invoices and payment intents match provider state after reconciliation.
+7. Verify that third-party domain, hosting and platform fees are disclosed separately where applicable.
+8. Do not enable live payment credentials until sandbox acceptance and the Phase 12 staging checklist pass.

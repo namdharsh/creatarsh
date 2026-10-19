@@ -1,0 +1,5 @@
+/* Light glassmorphic manager theme, preserving existing admin controls and layouts. */
+:root{color-scheme:light;--bg:#f4faf6;--panel:rgba(255,255,255,.82);--panel2:rgba(255,255,255,.94);--line:#dcebe2;--text:#17352a;--muted:#61796c;--green:#07864e;--red:#c23c4b}
+body{background:radial-gradient(ellipse at 8% 0%,rgba(160,235,192,.3),transparent 38%),#f4faf6!important;color:var(--text)!important}
+header,nav,.sidebar,.topbar,.modal,.panel,.card,.stat-card,.metric-card,.table-wrap,.content-card{background:rgba(255,255,255,.78)!important;color:var(--text)!important;border-color:#dcebe2!important;box-shadow:0 10px 32px rgba(27,83,48,.05)!important;backdrop-filter:blur(18px)}
+button,.btn{border-radius:12px!important}input,textarea,select{background:#fff!important;color:#17352a!important;border:1px solid #d3e6da!important;border-radius:12px!important}a{color:#087d49}table th{background:#eff8f2!important;color:#315943!important}table td{border-color:#e4efe7!important}*:focus-visible{outline:3px solid #12a866!important;outline-offset:3px}

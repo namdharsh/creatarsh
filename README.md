@@ -98,3 +98,7 @@ The manager dashboard includes **Website Publisher** for static HTML/CSS/JS proj
 ## Flutter customer app
 
 The Android customer app is in `apps/customer_flutter/`. See [`apps/customer_flutter/README.md`](apps/customer_flutter/README.md) for API configuration, tests and Android build steps.
+
+## Phase 12 — Security and production audit
+
+Read `PHASE_12_AUDIT_REPORT.md` before deployment. It documents source-level fixes, the test results actually run, outstanding production acceptance checks, required deployment settings, and a rollback procedure. This project is not declared production-ready until the listed staging and production checks pass.

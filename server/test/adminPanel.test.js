@@ -39,7 +39,7 @@ test('admin role cannot be self-disabled or self-demoted; superadmin boundaries 
 
 test('admin data collections have query indexes and role bootstrap settings are documented in env example', () => {
   assert.match(server, /adminAuditSchema\.index\(\{createdAt:-1,action:1\}\)/);
-  assert.match(server, /adCampaignSchema\.index\(\{status:1,placement:1,startsAt:1,endsAt:1\}\)/);
+  assert.match(server, /adCampaignSchema\.index\(\{status:1,creativeStatus:1,placement:1,startsAt:1,endsAt:1\}\)/);
   const env = fs.readFileSync(path.join(root, 'server/.env.example'), 'utf8');
   assert.match(env, /ADMIN_INITIAL_USERNAME/);
   assert.match(env, /ADMIN_INITIAL_PASSWORD/);

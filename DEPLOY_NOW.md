@@ -26,7 +26,7 @@ MANAGER_INITIAL_PASSWORD=...
 CORS_ORIGINS=https://creatarsh.in,https://www.creatarsh.in
 ```
 
-No Razorpay variables are required for the current booking-only flow.
+Razorpay payment support exists in the Phase 10 code, but sandbox acceptance is still required before live payments. If enabling sandbox checkout, configure `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, and `RAZORPAY_WEBHOOK_SECRET` as server-only environment variables. Do not enable live keys until the Phase 12 staging checklist passes.
 
 ## Domain
 
