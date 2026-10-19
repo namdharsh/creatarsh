@@ -1,0 +1,8 @@
+'use strict';
+const test=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');const path=require('node:path');
+const source=fs.readFileSync(path.join(__dirname,'..','server.js'),'utf8');
+const storage=fs.readFileSync(path.join(__dirname,'..','lib','privateObjectStorage.js'),'utf8');
+test('publisher endpoints require manager auth except short-lived signed preview files',()=>{assert.match(source,/app\.post\('\/api\/v1\/admin\/publisher\/businesses\/:businessId\/deployments',[\s\S]*?requireAdmin/);assert.match(source,/preview-link', requireAdmin, requireDb/);assert.match(source,/preview\/:deploymentId\/files\/\*', async/);});
+test('publisher only stores static assets privately and rejects runtime extensions',()=>{assert.match(source,/inspectStaticZip\(req\.file\.buffer, \{/);assert.match(source,/putPrivate\(sourceKey, req\.file\.buffer, 'application\/zip'\)/);assert.match(source,/putPrivate\(key, content, mimeType\(filePath\)\)/);assert.match(storage,/PutObjectCommand/);assert.doesNotMatch(source,/child_process|execFile\(|spawn\(|eval\(/);});
+test('publisher supports versioned publish, rollback, unpublish and audit logs',()=>{for(const s of ["/publish'","/rollback'","/unpublish'","/logs'"])assert.ok(source.includes(s),`missing route fragment ${s}`);assert.match(source,/publisher_release_published/);assert.match(source,/publisher_rollback/);assert.match(source,/publisher_unpublished/);});
+test('manager includes publisher UI and static ZIP upload controls',()=>{const ui=fs.readFileSync(path.join(__dirname,'..','..','manager','js','manager.js'),'utf8');assert.match(ui,/Website Publisher/);assert.match(ui,/FormData\(\)/);assert.match(ui,/publisherUnpublish/);});

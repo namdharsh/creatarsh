@@ -3,9 +3,9 @@ services:
     name: creatarsh
     runtime: node
     rootDir: .
-    buildCommand: npm install --no-audit --no-fund
+    buildCommand: npm install --no-audit --no-fund && npm install --prefix server --no-audit --no-fund
     startCommand: npm start
-    healthCheckPath: /api/health
+    healthCheckPath: /api/health/live
     envVars:
       - key: NODE_ENV
         value: production
@@ -23,3 +23,17 @@ services:
         sync: false
       - key: CORS_ORIGINS
         value: https://creatarsh.in,https://www.creatarsh.in
+      - key: TRUSTED_PROXY_COUNT
+        value: 1
+      - key: OBJECT_STORAGE_ENDPOINT
+        sync: false
+      - key: OBJECT_STORAGE_REGION
+        sync: false
+      - key: OBJECT_STORAGE_BUCKET
+        sync: false
+      - key: OBJECT_STORAGE_ACCESS_KEY_ID
+        sync: false
+      - key: OBJECT_STORAGE_SECRET_ACCESS_KEY
+        sync: false
+      - key: PLATFORM_ROOT_DOMAIN
+        value: creatarsh.in

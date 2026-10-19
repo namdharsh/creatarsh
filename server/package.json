@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "test": "node --test",
+    "check": "node --check server.js && node --check ../manager/admin.js && node --check ../customer/business-dashboard.js && node --check ../customer/discovery/js/app.js && node --check lib/staticZip.js && node --check lib/privateObjectStorage.js && node --check lib/publisherSecurity.js && node --test"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -13,6 +15,8 @@
     "express": "^4.21.2",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.9.5"
+    "mongoose": "^8.9.5",
+    "multer": "^2.0.2",
+    "@aws-sdk/client-s3": "^3.850.0"
   }
 }

@@ -1,0 +1,24 @@
+'use strict';
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const zlib=require('node:zlib');
+const {inspectStaticZip,normalizeArchivePath}=require('../lib/staticZip');
+const {safeRelativePath,assetPathFromReference,rewritePreviewCss,contentSecurityPolicy}=require('../lib/publisherSecurity');
+const table=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=(c&1)?0xedb88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t})();
+function crc32(b){let c=0xffffffff;for(const x of b)c=table[(c^x)&255]^(c>>>8);return(c^0xffffffff)>>>0;}
+function zip(entries){const locals=[],centrals=[];let offset=0;for(const [name,value,mode] of entries){const n=Buffer.from(name),data=Buffer.from(value),comp=zlib.deflateRawSync(data),crc=crc32(data);const l=Buffer.alloc(30);l.writeUInt32LE(0x04034b50,0);l.writeUInt16LE(20,4);l.writeUInt16LE(0x800,6);l.writeUInt16LE(8,8);l.writeUInt32LE(crc,14);l.writeUInt32LE(comp.length,18);l.writeUInt32LE(data.length,22);l.writeUInt16LE(n.length,26);locals.push(l,n,comp);const c=Buffer.alloc(46);c.writeUInt32LE(0x02014b50,0);c.writeUInt16LE(0x0314,4);c.writeUInt16LE(20,6);c.writeUInt16LE(0x800,8);c.writeUInt16LE(8,10);c.writeUInt32LE(crc,16);c.writeUInt32LE(comp.length,20);c.writeUInt32LE(data.length,24);c.writeUInt16LE(n.length,28);c.writeUInt32LE((((mode||0o100644)<<16)>>>0),38);c.writeUInt32LE(offset,42);centrals.push(c,n);offset+=l.length+n.length+comp.length;}const cd=Buffer.concat(centrals),local=Buffer.concat(locals),e=Buffer.alloc(22);e.writeUInt32LE(0x06054b50,0);e.writeUInt16LE(entries.length,8);e.writeUInt16LE(entries.length,10);e.writeUInt32LE(cd.length,12);e.writeUInt32LE(local.length,16);return Buffer.concat([local,cd,e]);}
+
+test('accepts a valid static site ZIP and returns a content manifest',()=>{const z=zip([['index.html','<!doctype html><title>Demo</title>'],['assets/site.css','body{margin:0}'],['assets/site.js','document.querySelector("body")']]);const r=inspectStaticZip(z);assert.equal(r.fileCount,3);assert.equal(r.files.get('index.html').toString().includes('Demo'),true);assert.match(r.sha256,/^[a-f0-9]{64}$/);});
+test('rejects traversal and absolute paths',()=>{assert.throws(()=>normalizeArchivePath('../evil.html'),/traversal/);assert.throws(()=>normalizeArchivePath('/root.html'),/absolute/);assert.throws(()=>inspectStaticZip(zip([['index.html','ok'],['../escape.js','bad']])),/traversal/);});
+test('rejects server-side code and unsupported file types',()=>{assert.throws(()=>inspectStaticZip(zip([['index.html','ok'],['server.php','<?php echo 1; ?>']])),/Unsupported file type/);assert.throws(()=>inspectStaticZip(zip([['index.html','ok'],['app.js','eval(alert(1))']])),/eval\(\)/);});
+test('rejects dangerous active content and remote scripts',()=>{assert.throws(()=>inspectStaticZip(zip([['index.html','<iframe src="https://evil.test"></iframe>']])),/Embedded active content/);assert.throws(()=>inspectStaticZip(zip([['index.html','<script src="https://evil.test/x.js"></script>']])),/Remote scripts/);});
+test('requires root index.html and limits compressed archive size',()=>{assert.throws(()=>inspectStaticZip(zip([['home.html','x']])),/root index.html/);assert.throws(()=>inspectStaticZip(Buffer.alloc(22),{maxCompressed:10}),/20 MB/);});
+test('published path resolver blocks traversal, encoded traversal and hidden files',()=>{assert.equal(safeRelativePath('/../../etc/passwd'),null);assert.equal(safeRelativePath('%2e%2e/secret.txt'),null);assert.equal(safeRelativePath('.env'),null);assert.equal(safeRelativePath('assets/app.js'),'assets/app.js');assert.equal(assetPathFromReference('index.html','../secret.js'),null);});
+test('CSP prevents network exfiltration and arbitrary frames',()=>{const p=contentSecurityPolicy(true);assert.match(p,/connect-src 'none'/);assert.match(p,/object-src 'none'/);assert.match(p,/sandbox allow-scripts/);});
+
+test('rejects case-colliding paths and unpacked archive bombs',()=>{assert.throws(()=>inspectStaticZip(zip([['index.html','one'],['INDEX.HTML','two']])),/case-colliding/);assert.throws(()=>inspectStaticZip(zip([['index.html','x'.repeat(500)]]),{maxUnpacked:100}),/Unpacked archive/);});
+test('rewrites preview CSS assets to signed private preview URLs',()=>{const css=rewritePreviewCss('body{background:url(../img/bg.png)}','css/main.css','dep123','tok123');assert.match(css,/preview\/dep123\/files\/img\/bg.png\?token=tok123/);});
+
+test('rejects symbolic links in ZIP metadata',()=>{assert.throws(()=>inspectStaticZip(zip([['index.html','ok'],['link.js','payload',0o120777]])),/Symbolic links/);});
+
+test('rejects package manifests that imply a runtime build or server project',()=>{assert.throws(()=>inspectStaticZip(zip([['index.html','ok'],['package.json','{\"scripts\":{\"start\":\"node server.js\"}}']])),/runtime manifests/);});
