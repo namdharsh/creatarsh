@@ -85,20 +85,6 @@
     const status = $('#locationStatus'); if (!status) return;
     status.textContent = state.city ? `Showing businesses in ${state.city}` : state.pin ? `Showing businesses near PIN ${state.pin}` : state.lat !== null ? 'Showing businesses near your shared location' : 'Choose a location to find businesses nearby';
   }
-
-  async function loadSponsoredAds() {
-    const section = $('#sponsoredSection'), grid = $('#sponsoredGrid'); if (!section || !grid) return;
-    try {
-      const data = await fetchJson(apiUrl('/api/public/ads?placement=DIRECTORY_FEATURED'));
-      const ads = Array.isArray(data.ads) ? data.ads : [];
-      if (!ads.length) { section.hidden = true; grid.innerHTML = ''; return; }
-      section.hidden = false;
-      grid.innerHTML = ads.map(ad => `<article class="business-card sponsored-card"><div class="business-card-body"><span class="sponsored-label">Sponsored</span>${ad.creativeUrl ? `<img class="sponsored-creative" src="${esc(ad.creativeUrl)}" alt="${esc(ad.title)}" loading="lazy" decoding="async">` : ''}<p class="business-category">${esc(ad.business?.category || ad.category || 'Featured business')}</p><h3>${esc(ad.title || ad.business?.name || 'Sponsored business')}</h3><p class="business-description">${esc(ad.text || '')}</p>${ad.business?.name ? `<p class="business-location">${esc(ad.business.name)}${ad.business.city ? ` · ${esc(ad.business.city)}` : ''}</p>` : ''}<a class="card-link" href="${esc(ad.destinationUrl)}" target="_blank" rel="sponsored noopener noreferrer" data-ad-click="${esc(ad.id)}">Visit sponsored site ↗</a></div></article>`).join('');
-      ads.forEach(ad => { fetch(apiUrl(`/api/public/ads/${encodeURIComponent(ad.id)}/event`), {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:'IMPRESSION'})}).catch(()=>{}); });
-      grid.querySelectorAll('[data-ad-click]').forEach(link => link.addEventListener('click', () => { fetch(apiUrl(`/api/public/ads/${encodeURIComponent(link.dataset.adClick)}/event`), {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:'CLICK'})}).catch(()=>{}); }));
-    } catch (_) { section.hidden = true; }
-  }
-
   function initHome() {
     if (!$('#businessGrid')) return;
     const params = new URLSearchParams(location.search);
@@ -128,7 +114,6 @@
     applyLocationStatus();
     fetchJson(apiUrl('/api/public/business-categories')).then(data => renderCategories(Array.isArray(data.categories) ? data.categories : [])).catch(() => { $('#categoryList').innerHTML = '<p class="category-loading">Categories are temporarily unavailable. Please try again shortly.</p>'; });
     loadBusinesses();
-    loadSponsoredAds();
   }
   async function initBusinessPage() {
     const page = $('#businessPage'); if (!page) return;
