@@ -1,0 +1,10 @@
+{
+  "name":"Creatarsh Client",
+  "short_name":"Creatarsh",
+  "start_url":"/",
+  "display":"standalone",
+  "background_color":"#050908",
+  "theme_color":"#25f28a",
+  "description":"Creatarsh digital solutions and client workspace",
+  "icons":[{"src":"/assets/creatarsh-logo.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}]
+}

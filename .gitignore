@@ -3,7 +3,3 @@ node_modules/
 .DS_Store
 uploads/*
 !uploads/.gitkeep
-.env.*
-!.env.example
-coverage/
-*.log

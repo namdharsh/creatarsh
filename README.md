@@ -66,35 +66,3 @@ Before accepting real customer payments:
 
 ## Authentication fix
 The Account page initializes the client authentication modal from `customer/js/site.js` after its dynamic login link is rendered. This avoids the previous event-order bug where the modal script ran before the Client Login link existed.
-
-## Public business discovery
-
-- Public discovery homepage: `/`
-- Previous Creatarsh agency homepage (preserved): `/studio`
-- Published business page: `/business/:slug`
-- Directory API: `/api/public/businesses`
-- Categories API: `/api/public/business-categories`
-
-The discovery website renders only published `Business` records from MongoDB. It does not include demo/fake business records. If no listings have been published, the site shows an empty state. See `docs/PUBLIC_DISCOVERY_WEBSITE.md` for schema, filters, local run commands and deployment checks.
-
-## Admin website publisher
-
-The manager dashboard includes **Website Publisher** for static HTML/CSS/JS projects. See [`docs/WEBSITE_PUBLISHER.md`](docs/WEBSITE_PUBLISHER.md) for ZIP rules, API endpoints, private object storage configuration, wildcard DNS, rollback and future isolated-worker architecture. Uploaded server-side code is not executed or supported.
-
-## Business dashboard (new)
-- Open `/business-dashboard` after signing in as a customer account that owns or has active membership in a business.
-- Features: business-scoped profile editing, website release status, date-filtered aggregate analytics, traffic sources, contact/WhatsApp/directions click counts, enquiry inbox, and store product/order navigation only when `storeEnabled` is true.
-- Read `docs/BUSINESS_DASHBOARD.md` for the API contract, privacy model, indexes, local test steps and known build-phase limitations.
-- Run `npm test --prefix server` and `npm run check --prefix server` from the repository root. Current automated suite: 47 tests.
-
-## Administrator workspace (new)
-
-- Open `/admin` for the separate restricted administrator workspace.
-- Configure `ADMIN_INITIAL_USERNAME`, `ADMIN_INITIAL_PASSWORD` and a unique `AUDIT_IP_SALT` in `server/.env` for local bootstrap. Existing manager accounts are not automatically promoted.
-- Admin APIs re-check the active MongoDB manager role on every request; `manager` is not sufficient for `/api/v1/admin/*`.
-- The workspace includes overview, approvals, moderation, roles, publisher, templates, plans, finance records, ad campaigns, correction/removal, deployments, audit and health.
-- See [`docs/ADMIN_PANEL.md`](docs/ADMIN_PANEL.md) for setup, security model, indexes and deployment checklist.
-
-## Flutter customer app
-
-The Android customer app is in `apps/customer_flutter/`. See [`apps/customer_flutter/README.md`](apps/customer_flutter/README.md) for API configuration, tests and Android build steps.
