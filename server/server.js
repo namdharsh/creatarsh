@@ -41,8 +41,6 @@ app.use(express.urlencoded({ extended: true, limit: '8mb' }));
 // Serve the customer website and manager assets from the same Express service.
 // This keeps CSS/JS/images available when the API and web app are deployed together.
 app.use('/customer', express.static(CUSTOMER_DIR, { extensions: ['html'] }));
-// Public tools directory; new tools can be added as folders under customer/tools.
-app.use('/tools', express.static(path.join(CUSTOMER_DIR, 'tools'), { extensions: ['html'] }));
 // Root aliases keep the same customer HTML files working when Express serves the site at /.
 app.use('/assets', express.static(path.join(CUSTOMER_DIR, 'assets')));
 app.use('/css', express.static(path.join(CUSTOMER_DIR, 'css')));
