@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Free Online Tools | Creatarsh</title>
+<meta name="description" content="Explore free, useful online tools by Creatarsh. Create a resume and discover simple tools for work, study and business.">
+<link rel="canonical" href="https://creatarsh.in/tools">
+<meta name="theme-color" content="#050908">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/tools/tools.css">
+</head>
+<body>
+<header class="nav"><div class="container nav-inner">
+<a class="logo" href="/"><img src="/assets/creatarsh-logo.png" alt="Creatarsh"><span>CREATARSH</span></a>
+<nav class="links"><a href="/">Home</a><a href="/services">Solutions</a><a href="/work">Results</a><a class="active" href="/tools">Free Tools</a><a href="/about">About</a></nav>
+<div class="nav-actions"><a class="btn" href="/login">Client Login</a><a class="btn primary" href="/contact">Talk to us ↗</a></div>
+</div></header>
+<main class="tools-page">
+<section class="tools-hero"><div class="container">
+<span class="eyebrow">CREATARSH TOOLKIT</span>
+<h1>Small tools.<br><span>Big head starts.</span></h1>
+<p>Useful, simple online tools to help you get things done. Free to use, with more tools being added over time.</p>
+<div class="tools-search"><span aria-hidden="true">⌕</span><input id="toolSearch" type="search" placeholder="Search tools..." aria-label="Search tools"><kbd>Search</kbd></div>
+<div class="tool-meta"><span><i class="status-dot"></i> Free tools</span><span>New tools added regularly</span></div>
+</div></section>
+<section class="container tools-catalogue">
+<div class="catalogue-head"><div><span class="eyebrow">THE TOOLBOX</span><h2>Find your tool</h2><p id="resultCount">Explore tools made for everyday work.</p></div>
+<div class="category-filters" role="group" aria-label="Filter tools">
+<button class="filter-chip active" data-category="all">All tools</button><button class="filter-chip" data-category="career">Career</button><button class="filter-chip" data-category="business">Business</button><button class="filter-chip" data-category="productivity">Productivity</button>
+</div></div>
+<div class="tools-grid" id="toolsGrid">
+<a class="tool-card featured" href="/tools/resume" data-title="resume maker cv builder career job" data-category="career">
+<div class="tool-card-top"><span class="tool-icon">▤</span><span class="tool-badge">POPULAR</span><span class="tool-arrow">↗</span></div>
+<div class="tool-card-body"><span class="tool-category">CAREER</span><h3>Resume Maker</h3><p>Build a professional resume with ready-made templates and clear sections for your education, skills and experience.</p><div class="tool-card-footer"><span>Free to create</span><span class="launch-label">Make a resume ↗</span></div></div>
+</a>
+<!-- ADD NEW TOOLS HERE: duplicate a .tool-card, set its href, data-title and data-category, then edit its content. -->
+<div class="tool-card coming-soon" data-title="business tools productivity" data-category="business">
+<div class="tool-card-top"><span class="tool-icon">⌘</span><span class="tool-badge">COMING SOON</span></div><div class="tool-card-body"><span class="tool-category">BUSINESS</span><h3>Business Toolkit</h3><p>Simple utilities to help small businesses organize everyday work.</p><div class="tool-card-footer"><span>In the works</span><span>Coming soon</span></div></div>
+</div>
+<div class="tool-card coming-soon" data-title="productivity text tools" data-category="productivity">
+<div class="tool-card-top"><span class="tool-icon">✳</span><span class="tool-badge">COMING SOON</span></div><div class="tool-card-body"><span class="tool-category">PRODUCTIVITY</span><h3>Everyday Utilities</h3><p>Handy tools for common tasks, designed to be quick and easy to use.</p><div class="tool-card-footer"><span>In the works</span><span>Coming soon</span></div></div>
+</div>
+</div>
+<div class="empty-state" id="emptyState" hidden><span>⌕</span><h3>No matching tools</h3><p>Try another search or choose a different category.</p></div>
+</section>
+<section class="tools-bottom"><div class="container tools-bottom-inner"><div><span class="eyebrow">HAVE AN IDEA?</span><h2>What tool should we build next?</h2><p>Tell us what would make your work simpler. We’re building practical tools for real needs.</p></div><a class="btn primary" href="/contact?goal=tool-idea">Suggest a tool ↗</a></div></section>
+</main>
+<footer class="tools-footer"><div class="container"><a class="logo" href="/"><img src="/assets/creatarsh-logo.png" alt=""><span>CREATARSH</span></a><p>BUILD. DESIGN. LAUNCH.</p><span>© <span id="year"></span> Creatarsh. Useful by design.</span></div></footer>
+<script src="/tools/tools.js" defer></script>
+</body></html>

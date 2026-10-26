@@ -19,4 +19,5 @@
   <url><loc>https://creatarsh.in/legal/acceptable-use</loc><priority>0.5</priority></url>
   <url><loc>https://creatarsh.in/support</loc><priority>0.6</priority></url>
   <url><loc>https://creatarsh.in/grievance</loc><priority>0.5</priority></url>
+  <url><loc>https://creatarsh.in/tools</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
 </urlset>
