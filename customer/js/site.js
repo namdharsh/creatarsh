@@ -11,6 +11,9 @@ const API_CANDIDATES=[
 ].filter((v,i,a)=>v && a.indexOf(v)===i).map(v=>v.endsWith('/api')?v:v+'/api');
 let activeApiBase=API_CANDIDATES[0]||'/api';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+// Loading placeholders are structural only; real content is rendered exclusively from API responses.
+function skeletonCards(count=3,kind='card'){return `<div class="skeleton-grid skeleton-grid-${kind}" aria-label="Loading content from Creatarsh server" aria-busy="true">${Array.from({length:count},()=>`<article class="skeleton-card"><i class="sk-line sk-kicker"></i><i class="sk-line sk-title"></i><i class="sk-line sk-copy"></i><i class="sk-line sk-copy short"></i><i class="sk-line sk-action"></i></article>`).join('')}</div>`}
+function skeletonRows(count=5){return `<div class="skeleton-rows" aria-label="Loading content from Creatarsh server" aria-busy="true">${Array.from({length:count},()=>`<div class="skeleton-row"><i class="sk-line sk-title"></i><i class="sk-line sk-copy"></i></div>`).join('')}</div>`;}
 const slugifyClient=v=>String(v||'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
 const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const token=()=>localStorage.getItem('cr_customer_token');
@@ -196,7 +199,7 @@ function authPage(mode){const f=$('#authForm');if(!f)return;const c=customer();i
 async function account(){
   const root=$('#accountRoot'); if(!root)return;
   if(!customer()||!token()){root.innerHTML='<div class="empty">Please sign in to access your client account.<br><a class="btn primary" href="/login" style="margin-top:16px">Client Login ↗</a></div>';return;}
-  root.innerHTML='<div class="empty">Loading your client workspace…</div>';
+  root.innerHTML=skeletonCards(4,'account');
   try{
     // Load the authenticated customer first. The remaining dashboard panels are
     // independent, so one optional/older API route must never blank the entire
@@ -452,12 +455,12 @@ async function init(){
   shell();
   const page=document.body.dataset.page;
   try{
-    if(page==='home'){renderBanners({banners:[]});const d=await content();renderHome(d);renderBanners(d);}
-    else if(page==='services'){const d=await content();renderServices(d);}
+    if(page==='home'){renderBanners({banners:[]});if($('#serviceGrid'))$('#serviceGrid').innerHTML=skeletonCards(3,'services');if($('#workGrid'))$('#workGrid').innerHTML=skeletonCards(2,'work');if($('#testimonialGrid'))$('#testimonialGrid').innerHTML=skeletonCards(2,'testimonials');const d=await content();renderHome(d);renderBanners(d);}
+    else if(page==='services'){if($('#allServices'))$('#allServices').innerHTML=skeletonCards(6,'services');const d=await content();renderServices(d);}
     else if(page==='service'){await renderServiceDetail();}
-    else if(page==='work'){const d=await content();renderWork(d);}
+    else if(page==='work'){if($('#allWork'))$('#allWork').innerHTML=skeletonCards(4,'work');const d=await content();renderWork(d);}
     else if(page==='portfolio'){await renderPortfolioDetail();}
-    else if(page==='faq'){const d=await content();renderFaq(d);}
+    else if(page==='faq'){if($('#faqList'))$('#faqList').innerHTML=skeletonRows(6);const d=await content();renderFaq(d);}
     else if(page==='contact')setupLead();
     else if(page==='account'){account(); initAccountAuthModal();}
     else if(page==='login')authPage('login');
@@ -467,7 +470,7 @@ async function init(){
     const msg=esc(e.message||'The website content could not be loaded.');
     if(page==='home'){const services=$('#serviceGrid'),work=$('#workGrid');if(services)services.innerHTML=`<div class="empty">Service listings are temporarily unavailable. <a href="/contact">Contact us ↗</a></div>`;if(work)work.innerHTML=`<div class="empty">Project previews are temporarily unavailable. <a href="/work">Browse demos ↗</a></div>`;console.error(e);}
     else if(page==='services'||page==='work'||page==='faq') root.innerHTML=`<section class="page-head"><div class="container"><span class="eyebrow">TEMPORARILY UNAVAILABLE</span><h1>We are updating the site.</h1><p>${msg}</p><a class="btn primary" href="/contact">Contact Creatarsh ↗</a></div></section>`;
-    else console.error(e);
+    else if(page==='service'){const serviceRoot=$('#serviceRoot');if(serviceRoot)serviceRoot.innerHTML=`<section class="page-head"><div class="container"><span class="eyebrow">CONTENT UNAVAILABLE</span><h1>We couldn't connect to the service catalogue.</h1><p>${msg}</p><a class="btn primary" href="/contact">Contact Creatarsh ↗</a> <button class="btn" onclick="location.reload()">Try again</button></div></section>`;}else console.error(e);
   }
 }
 
@@ -487,6 +490,7 @@ function serviceSlugMatch(s,slug){return String(s.slug||slugifyClient(s.title))=
 async function renderServiceDetail(){
   const root=$('#serviceRoot');if(!root)return;
   const slug=decodeURIComponent(location.pathname.split('/').filter(Boolean).pop()||'');
+  root.innerHTML=`<section class="page-head"><div class="container">${skeletonRows(2)}</div></section><section class="section"><div class="container">${skeletonCards(3,'services')}</div></section>`;
   try{
     const d=await content();
     const service=(d.services||[]).find(x=>serviceSlugMatch(x,slug));
@@ -515,6 +519,7 @@ async function renderServiceDetail(){
 
 function buyPage(){
   const root=$('#buyRoot'); if(!root)return;
+  root.innerHTML=skeletonCards(3,'packages');
   const params=new URLSearchParams(location.search);
   let selectedCode=params.get('package')||localStorage.getItem('cr_pending_package')||null;
   let packages=[];
@@ -600,13 +605,13 @@ function buyPage(){
     if(selectedCode&&!packages.some(x=>x.code===selectedCode))selectedCode=null;
     if(!packages.length){
       root.innerHTML=`<div class="empty package-error"><h2>Packages are temporarily unavailable.</h2><p>We don't want to show outdated pricing. Contact us directly and we'll confirm the current scope and price.</p><div class="actions"><a class="btn primary" href="/contact">Request a quote ↗</a><a class="btn" href="https://wa.me/917566743098?text=Hi%20Creatarsh%2C%20please%20share%20your%20current%20service%20packages." target="_blank" rel="noopener">WhatsApp us</a></div><button class="btn retry-packages" type="button">Try again</button></div>`;
-      root.querySelector('.retry-packages').onclick=()=>{root.innerHTML='<div class="empty">Loading current packages…</div>';buyPage()};
+      root.querySelector('.retry-packages').onclick=()=>{root.innerHTML=skeletonCards(3,'packages');buyPage()};
       return;
     }
     render();
   }).catch(e=>{
     root.innerHTML=`<div class="empty package-error"><h2>We couldn't load current packages.</h2><p>Our package list is temporarily unreachable. You can still request a quote or speak with us directly.</p><div class="actions"><a class="btn primary" href="/contact">Request a quote ↗</a><a class="btn" href="https://wa.me/917566743098?text=Hi%20Creatarsh%2C%20I%20want%20to%20discuss%20your%20services." target="_blank" rel="noopener">WhatsApp us</a></div><p class="form-help">Technical detail: ${esc(e.message||'Pricing service unavailable.')}</p><button class="btn retry-packages" type="button">Try again</button></div>`;
-    root.querySelector('.retry-packages').onclick=()=>{root.innerHTML='<div class="empty">Loading current packages…</div>';buyPage()};
+    root.querySelector('.retry-packages').onclick=()=>{root.innerHTML=skeletonCards(3,'packages');buyPage()};
   });
 }
 
