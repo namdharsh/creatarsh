@@ -546,21 +546,85 @@ function buyPage(){
   const render=()=>{
     const selected=packages.find(x=>x.code===selectedCode);
     root.innerHTML=`
-      <div class="sales-page-intro"><div><span class="eyebrow">DON'T START WITH PRICE</span><h2>Start with the result you want.</h2><p class="muted">Every package is a starting point. First see what the system is designed to change, what is included and who it is for. Then look at the investment.</p></div><a class="btn" href="/contact">Not sure? Get advice ↗</a></div>
-      <div class="package-sales-grid">${packages.map(x=>`<article class="card sales-package ${x.code===selectedCode?'selected':''}"><div class="package-top"><span class="tag">${esc(x.category||'SOLUTION')}</span>${x.popular?'<span class="badge-pop">BEST FIT</span>':''}</div><h3>${esc(x.name)}</h3><p class="package-outcome">${esc(resultFor(x))}</p><div class="package-proof"><b>What the customer gets</b><ul>${(x.features||[]).slice(0,5).map(f=>`<li>✓ ${esc(f)}</li>`).join('')}</ul></div><details class="package-investment"><summary>See investment & scope</summary><div class="package-price">₹${Number(x.price||0).toLocaleString('en-IN')}${x.startingAt?'<small>+</small>':''}</div><p class="muted">${esc(x.description||'')}</p><button class="btn ${x.code===selectedCode?'primary':''} choose-package" data-code="${esc(x.code)}">${x.code===selectedCode?'Selected ✓':'Choose this solution →'}</button></details></article>`).join('')}</div>
-      <div class="sales-note"><strong>Why prices come later:</strong><span>Because the wrong solution is expensive even when the price looks cheap. We confirm your goal, scope and fit before final quotation.</span><a href="/contact">Talk to Creatarsh →</a></div>
-      ${selected?`<div class="card booking-card"><div class="stepper"><span class="active">1 Result</span><span class="active">2 Solution</span><span class="active">3 Requirements</span><span>4 Quote + next steps</span></div><h2>Let's plan ${esc(selected.name)} around your business.</h2><p class="muted">Your enquiry is reviewed by Creatarsh before any final price or contract is confirmed.</p>${token()?bookingForm(selected):`<div class="notice"><strong>Create your client workspace to continue.</strong><br>It keeps your enquiry, quote, agreement, project progress and support in one place.</div><div class="actions" style="margin-top:18px"><a class="btn primary" href="/login?next=${encodeURIComponent('/buy?package='+selected.code)}">Continue to login ↗</a><a class="btn" href="/register?next=${encodeURIComponent('/buy?package='+selected.code)}">Create client account</a></div>`}</div>`:''}`;
+      <div class="sales-page-intro"><div><span class="eyebrow">DON'T START WITH PRICE</span><h2>Start with the result you want.</h2><p class="muted">Compare the deliverables and starting investment upfront. Choose a package to send your brief; we confirm scope, timeline and any applicable extras before work begins.</p></div><a class="btn" href="/contact">Not sure? Get advice ↗</a></div>
+      <div class="package-sales-grid">${packages.map(x=>`<article class="card sales-package ${x.code===selectedCode?'selected':''}"><div class="package-top"><span class="tag">${esc(x.category||'SOLUTION')}</span>${x.popular?'<span class="badge-pop">BEST FIT</span>':''}</div><h3>${esc(x.name)}</h3><p class="package-outcome">${esc(resultFor(x))}</p><div class="package-proof"><b>What the customer gets</b><ul>${(x.features||[]).slice(0,5).map(f=>`<li>✓ ${esc(f)}</li>`).join('')}</ul></div><div class="package-investment"><div class="package-price">₹${Number(x.price||0).toLocaleString('en-IN')}${x.startingAt?'<small>+</small>':''}${x.billingType==='MONTHLY'?'<small class="billing-note"> / month</small>':''}</div><p class="muted package-description">${esc(x.description||'')}</p><button class="btn ${x.code===selectedCode?'primary':''} choose-package" data-code="${esc(x.code)}">${x.code===selectedCode?'Selected ✓':'Choose this solution →'}</button><small class="package-disclaimer">Final scope and any third-party costs are confirmed before work starts.</small></div></article>`).join('')}</div>
+      <div class="sales-note"><strong>Need something custom?</strong><span>Share your requirements first. We will confirm the scope, timeline, total price and payment milestones in writing before you commit.</span><a href="/contact">Request a custom quote →</a></div>
+      ${selected?`<div class="card booking-card"><div class="stepper"><span class="active">1 Result</span><span class="active">2 Solution</span><span class="active">3 Requirements</span><span>4 Quote + next steps</span></div><h2>Let's plan ${esc(selected.name)} around your business.</h2><p class="muted">Your brief is reviewed before final scope and timeline are confirmed.</p><p id="bookingPaymentNote" class="booking-payment-note">Checking available next steps…</p>${token()?bookingForm(selected):`<div class="notice"><strong>Create your client workspace to continue.</strong><br>It keeps your enquiry, quote, agreement, project progress and support in one place.</div><div class="actions" style="margin-top:18px"><a class="btn primary" href="/login?next=${encodeURIComponent('/buy?package='+selected.code)}">Continue to login ↗</a><a class="btn" href="/register?next=${encodeURIComponent('/buy?package='+selected.code)}">Create client account</a></div>`}</div>`:''}`;
     $$('.choose-package').forEach(b=>b.onclick=()=>{selectedCode=b.dataset.code;localStorage.setItem('cr_pending_package',selectedCode);history.replaceState(null,'','/buy?package='+encodeURIComponent(selectedCode));render();document.querySelector('.booking-card')?.scrollIntoView({behavior:'smooth',block:'start'});});
+    if(selected){
+      const paymentNote=$('#bookingPaymentNote');
+      if(paymentNote)api('/public/payment-config').then(cfg=>{
+        paymentNote.textContent=selected.billingType==='MONTHLY'
+          ? 'Monthly care plans are activated manually for now. No payment is taken here; submit your brief and we will confirm the start date and recurring billing terms.'
+          : cfg.enabled
+            ? `Secure checkout is available. Booking payment today: ₹${Number(selected.bookingAmount||selected.price||0).toLocaleString('en-IN')}. Any remaining project balance and final scope are confirmed in writing.`
+            : 'No online payment will be taken on this step. Submit your brief and Creatarsh will confirm scope, timeline and payment terms before work begins.';
+      }).catch(()=>{if(paymentNote)paymentNote.textContent='You can submit your brief without payment. We will confirm the scope and payment steps with you.'});
+    }
     const form=$('#bookingForm'); if(form)form.onsubmit=e=>submitBooking(e,selected);
   };
-  const bookingForm=x=>`<form id="bookingForm"><div class="form-grid"><div class="field"><label>Business / project name</label><input name="company" value="${esc(customer()?.company||'')}" placeholder="Your business or project"></div><div class="field"><label>Phone / WhatsApp</label><input name="phone" value="${esc(customer()?.phone||'')}" placeholder="+91"></div><div class="field full"><label>What result do you want?</label><select name="goal"><option>More enquiries</option><option>More online sales</option><option>Save business time</option><option>Build a stronger brand</option><option>Something else</option></select></div><div class="field full"><label>What do you need?</label><textarea name="requirements" rows="5" required placeholder="Tell us about your current situation, customers, goals and important requirements."></textarea></div><div class="field full"><label><input type="checkbox" name="terms" value="true" required> I agree to the <a href="/legal/terms" target="_blank">Terms & Conditions</a>.</label></div><div class="field full"><label><input type="checkbox" name="privacy" value="true" required> I acknowledge the <a href="/legal/privacy" target="_blank">Privacy Policy</a>.</label></div><div class="field full"><label><input type="checkbox" name="marketingConsent" value="true"> I want optional Creatarsh updates.</label></div></div><button class="btn primary" type="submit">Send my project brief ↗</button><p id="bookingStatus" class="form-help"></p></form>`;
-  async function submitBooking(e,x){
-    e.preventDefault();const form=e.target,btn=form.querySelector('button[type=submit]'),status=$('#bookingStatus');btn.disabled=true;status.textContent='Sending project brief…';
-    try{const v=Object.fromEntries(new FormData(form));const r=await api('/customer/bookings',{method:'POST',body:JSON.stringify({...v,productCode:x.code,termsVersion:'2026-10',privacyVersion:'2026-10'})});localStorage.removeItem('cr_pending_package');status.innerHTML=`<strong>Project brief received ✓</strong><br>Reference <strong>${esc(r.enquiry?.enquiryId||'created')}</strong>. We’ll review the business goal, confirm scope and contact you with next steps.<br><a class="btn primary" href="/account" style="margin-top:12px">Open client workspace ↗</a>`;form.reset();}
-    catch(err){status.textContent=err.message||'Unable to send project brief.';btn.disabled=false;}
+  const bookingForm=x=>`<form id="bookingForm"><div class="form-grid"><div class="field"><label>Business / project name</label><input name="company" value="${esc(customer()?.company||'')}" placeholder="Your business or project"></div><div class="field"><label>Phone / WhatsApp</label><input name="phone" value="${esc(customer()?.phone||'')}" placeholder="+91"></div><div class="field full"><label>What result do you want?</label><select name="goal"><option>More enquiries</option><option>More online sales</option><option>Save business time</option><option>Build a stronger brand</option><option>Something else</option></select></div><div class="field full"><label>What do you need?</label><textarea name="requirements" rows="5" required placeholder="Tell us about your current situation, customers, goals and important requirements."></textarea></div><div class="field full"><label><input type="checkbox" name="terms" value="true" required> I agree to the <a href="/legal/terms" target="_blank">Terms & Conditions</a>.</label></div><div class="field full"><label><input type="checkbox" name="privacy" value="true" required> I acknowledge the <a href="/legal/privacy" target="_blank">Privacy Policy</a>.</label></div><div class="field full"><label><input type="checkbox" name="marketingConsent" value="true"> I want optional Creatarsh updates.</label></div></div><button class="btn primary" type="submit">Continue securely ↗</button><p id="bookingStatus" class="form-help"></p></form>`;
+  async function loadRazorpay(){
+    if(window.Razorpay)return true;
+    await new Promise((resolve,reject)=>{
+      const existing=document.querySelector('script[data-razorpay-checkout]');
+      if(existing){existing.addEventListener('load',resolve,{once:true});existing.addEventListener('error',reject,{once:true});return;}
+      const script=document.createElement('script');script.src='https://checkout.razorpay.com/v1/checkout.js';script.async=true;script.dataset.razorpayCheckout='true';script.onload=resolve;script.onerror=()=>reject(new Error('Secure checkout could not load. Check your connection and try again.'));document.head.appendChild(script);
+    });
+    return Boolean(window.Razorpay);
   }
+  async function submitBooking(e,x){
+    e.preventDefault();
+    const form=e.target,btn=form.querySelector('button[type=submit]'),status=$('#bookingStatus');
+    btn.disabled=true;status.textContent='Preparing your next step…';
+    try{
+      const v=Object.fromEntries(new FormData(form));
+      const config=await api('/public/payment-config');
+      if(config.enabled&&config.provider==='razorpay'&&x.billingType!=='MONTHLY'){
+        const order=await api('/customer/payments/razorpay/order',{method:'POST',body:JSON.stringify({...v,productCode:x.code,termsVersion:'2026-10',privacyVersion:'2026-10'})});
+        await loadRazorpay();
+        const checkout=new window.Razorpay({
+          key:order.keyId,amount:order.amount,currency:order.currency,order_id:order.orderId,
+          name:order.name,description:order.description,prefill:order.prefill,
+          notes:{creatarsh_order:order.localOrderId},
+          theme:{color:'#087f4b'},
+          modal:{ondismiss:()=>{status.textContent='Checkout was closed. No payment confirmation was received. You can try again or contact us for help.';btn.disabled=false;}},
+          handler:async response=>{
+            status.textContent='Verifying payment securely…';
+            try{
+              const verified=await api('/customer/payments/razorpay/verify',{method:'POST',body:JSON.stringify({...response,localOrderId:order.localOrderId})});
+              localStorage.removeItem('cr_pending_package');
+              status.innerHTML=`<strong>Booking payment confirmed ✓</strong><br>Reference <strong>${esc(verified.orderId)}</strong>. Amount received: <strong>₹${Number(verified.amount).toLocaleString('en-IN')}</strong>. We’ll review your brief and contact you about scope, timeline and the remaining project balance.<br><a class="btn primary" href="/account" style="margin-top:12px">Open client workspace ↗</a>`;
+              form.reset();
+            }catch(err){status.textContent=(err.message||'Payment verification is pending.')+' If money was deducted, do not pay again immediately; contact support with your payment ID.';btn.disabled=false;}
+          }
+        });
+        checkout.on('payment.failed',response=>{status.textContent=response.error?.description||'Payment failed or was not completed. You can try again.';btn.disabled=false;});
+        checkout.open();
+        status.textContent=`Secure checkout ready. Booking payment: ₹${Number(order.amount/100).toLocaleString('en-IN')}.`;
+        return;
+      }
+      const r=await api('/customer/bookings',{method:'POST',body:JSON.stringify({...v,productCode:x.code,termsVersion:'2026-10',privacyVersion:'2026-10'})});
+      localStorage.removeItem('cr_pending_package');
+      status.innerHTML=`<strong>Project brief received ✓</strong><br>Reference <strong>${esc(r.enquiry?.enquiryId||'created')}</strong>. Online checkout is not configured yet, so no payment was taken. We’ll confirm scope, timeline and payment steps with you before work begins.<br><a class="btn primary" href="/account" style="margin-top:12px">Open client workspace ↗</a>`;
+      form.reset();
+    }catch(err){status.textContent=err.message||'Unable to continue. Please try again or contact support.';btn.disabled=false;}
+  }
+
   if(selectedCode)localStorage.setItem('cr_pending_package',selectedCode);
-  api('/public/pricing').then(d=>{packages=d.packages||[];if(selectedCode&&!packages.some(x=>x.code===selectedCode))selectedCode=null;render();}).catch(e=>{root.innerHTML=`<div class="empty">${esc(e.message)}<br><a class="btn primary" href="/contact" style="margin-top:16px">Get a business plan ↗</a></div>`});
+  api('/public/pricing').then(d=>{
+    packages=d.packages||[];
+    if(selectedCode&&!packages.some(x=>x.code===selectedCode))selectedCode=null;
+    if(!packages.length){
+      root.innerHTML=`<div class="empty package-error"><h2>Packages are temporarily unavailable.</h2><p>We don't want to show outdated pricing. Contact us directly and we'll confirm the current scope and price.</p><div class="actions"><a class="btn primary" href="/contact">Request a quote ↗</a><a class="btn" href="https://wa.me/917566743098?text=Hi%20Creatarsh%2C%20please%20share%20your%20current%20service%20packages." target="_blank" rel="noopener">WhatsApp us</a></div><button class="btn retry-packages" type="button">Try again</button></div>`;
+      root.querySelector('.retry-packages').onclick=()=>{root.innerHTML='<div class="empty">Loading current packages…</div>';buyPage()};
+      return;
+    }
+    render();
+  }).catch(e=>{
+    root.innerHTML=`<div class="empty package-error"><h2>We couldn't load current packages.</h2><p>Our package list is temporarily unreachable. You can still request a quote or speak with us directly.</p><div class="actions"><a class="btn primary" href="/contact">Request a quote ↗</a><a class="btn" href="https://wa.me/917566743098?text=Hi%20Creatarsh%2C%20I%20want%20to%20discuss%20your%20services." target="_blank" rel="noopener">WhatsApp us</a></div><p class="form-help">Technical detail: ${esc(e.message||'Pricing service unavailable.')}</p><button class="btn retry-packages" type="button">Try again</button></div>`;
+    root.querySelector('.retry-packages').onclick=()=>{root.innerHTML='<div class="empty">Loading current packages…</div>';buyPage()};
+  });
 }
 
 document.addEventListener('DOMContentLoaded',()=>{buyPage();cookieConsent();});

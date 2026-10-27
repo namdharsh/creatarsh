@@ -59,8 +59,8 @@ For production, configure `MONGODB_URI`, `MANAGER_JWT_SECRET`, `CUSTOMER_JWT_SEC
 Before accepting real customer payments:
 1. Set `MONGODB_URI`, `MANAGER_JWT_SECRET`, `CUSTOMER_JWT_SECRET`, manager credentials and `CORS_ORIGINS` in Render.
 2. Set `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` and `RAZORPAY_WEBHOOK_SECRET` when payments are enabled.
-3. Configure the Razorpay webhook URL as `https://creatarsh.in/api/webhooks/razorpay` (or your actual API origin) and subscribe to payment capture/order paid events.
-4. Test: Create Account → Login → My Account → Start Project/Buy → Terms acceptance → Privacy acknowledgement → Order → Razorpay Test Mode → server verification → invoice → dashboard.
+3. Set `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, and `RAZORPAY_WEBHOOK_SECRET` in Render. The package booking flow enables Razorpay Checkout when the key ID and secret are present; it charges the package's configured `bookingAmount` as the booking payment, not necessarily the full package price. Configure the webhook URL as `https://creatarsh.in/api/webhooks/razorpay` (or your actual API origin) and subscribe to `payment.captured`.
+4. Test: Create Account → Login → Buy → Terms acceptance → Privacy acknowledgement → Razorpay Test Mode booking payment → server-side signature and capture verification → order status in manager/customer views. Verify the remaining balance and scope in the approved proposal before beginning work.
 5. Test support tickets, contracts, privacy requests, manager workflow and mobile layout.
 6. Never upload `server/.env` or commit credentials. Rotate any credential that was ever exposed.
 

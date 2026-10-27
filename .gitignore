@@ -3,3 +3,7 @@ node_modules/
 .DS_Store
 uploads/*
 !uploads/.gitkeep
+
+# Environment variants are local secrets; commit only the safe template.
+.env.*
+!.env.example

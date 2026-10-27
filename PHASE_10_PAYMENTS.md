@@ -70,3 +70,11 @@ For a local API run, configure `server/.env` with a test MongoDB URI, strong dev
 - Automated subscription renewals are not implemented; `MONTHLY` and `YEARLY` currently label billing cadence only. Use Razorpay Subscriptions in a separately tested phase before promising automatic recurring charges.
 - GST settings and invoice fields require review for the applicable registration and supply treatment before issuing live tax invoices.
 - Do not deploy to production until test mode reconciliation and backup/rollback review are complete.
+
+
+## Creatarsh website checkout refresh (2026-10)
+- The customer package flow now supports Razorpay Checkout when `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` are configured.
+- The server creates orders from the active package's configured `bookingAmount`, verifies the checkout signature, then checks the payment status and amount directly with Razorpay before marking the order paid/partially paid.
+- A signed `payment.captured` webhook can reconcile the local order and payment record.
+- When credentials are absent, the website clearly falls back to a project enquiry and does not claim that payment was taken.
+- Before production use, test with Razorpay test keys and configure `RAZORPAY_WEBHOOK_SECRET`; never put secret keys in frontend code.

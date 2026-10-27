@@ -183,9 +183,9 @@ mongoose.connection.once('connected', () => { seed().then(async () => { await Se
 
 // ---------- Public API ----------
 app.get('/api/health', (req, res) => res.json({ ok: true, database: dbReady, service: 'creatarsh-api' }));
-app.get('/api/public/payment-config', (req,res)=>res.json({provider:null,enabled:false,currency:'INR'}));
+app.get('/api/public/payment-config', (req,res)=>res.json({provider:'razorpay',enabled:Boolean(RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET),keyId:RAZORPAY_KEY_ID||null,currency:'INR'}));
 
-app.get('/api/public/pricing', async (req,res) => { try { const packages=await ServicePackage.find({active:true}).sort({order:1}); res.json({version:'2026-10',currency:'INR',packages}); } catch(e){ res.status(503).json({message:'Pricing is temporarily unavailable.'}); } });
+app.get('/api/public/pricing', async (req,res) => { if (!dbReady) return res.status(503).json({message:'Pricing is temporarily unavailable because the database is not connected.'}); try { const packages=await ServicePackage.find({active:true}).sort({order:1}); res.json({version:'2026-10',currency:'INR',packages}); } catch(e){ res.status(503).json({message:'Pricing is temporarily unavailable.'}); } });
 
 app.post('/api/public/orders', async (req,res) => res.status(410).json({message:'Please sign in and use the package booking flow.'}));
 app.post('/api/customer/bookings', requireCustomer, async (req,res) => {
@@ -298,9 +298,66 @@ app.post('/api/customer/notifications/:id/read', requireCustomer, async (req, re
 // ---------- Customer contracts & verified payments ----------
 app.get('/api/customer/contracts',requireCustomer,async(req,res)=>res.json(await Contract.find({customer:req.auth.sub}).populate('project','name projectId').sort({createdAt:-1})));
 app.post('/api/customer/contracts/:id/accept',requireCustomer,async(req,res)=>{const c=await Contract.findOne({_id:req.params.id,customer:req.auth.sub});if(!c)return res.status(404).json({message:'Contract not found.'});if(c.status!=='SENT')return res.status(400).json({message:'This contract is not awaiting acceptance.'});c.status='ACCEPTED';c.acceptedAt=new Date();c.acceptedIp=req.ip;c.save();await Notification.create({recipientType:'customer',recipient:c.customer,title:'Contract accepted',message:`${c.title} has been accepted.`,link:'/account'});res.json(c);});
-app.post('/api/customer/payments/razorpay/order',requireCustomer,async(req,res)=>res.status(410).json({message:'Online payment is disabled. Creatarsh currently accepts booking enquiries only.'}));
-app.post('/api/customer/payments/razorpay/verify',requireCustomer,async(req,res)=>res.status(410).json({message:'Online payment is disabled. Creatarsh currently accepts booking enquiries only.'}));
-app.post('/api/webhooks/razorpay',async(req,res)=>res.status(410).json({message:'Online payment is disabled.'}));
+app.post('/api/customer/payments/razorpay/order',requireCustomer,async(req,res)=>{
+  if(!dbReady)return res.status(503).json({message:'Checkout is temporarily unavailable because the database is not connected.'});
+  if(!RAZORPAY_KEY_ID||!RAZORPAY_KEY_SECRET)return res.status(503).json({message:'Online checkout is not configured yet. You can still send your project brief.'});
+  const b=req.body||{};
+  if(!b.productCode||!String(b.requirements||'').trim()||!b.terms||!b.privacy)return res.status(400).json({message:'Package, project requirements, Terms acceptance and Privacy acknowledgement are required.'});
+  const product=await ServicePackage.findOne({code:String(b.productCode),active:true});
+  if(!product)return res.status(400).json({message:'This package is no longer available.'});
+  if(product.billingType==='MONTHLY')return res.status(400).json({message:'Monthly care plans require manual activation and billing confirmation. Please send your project brief instead.'});
+  const amount=Math.round(Number(product.bookingAmount||product.price||0));
+  if(!Number.isFinite(amount)||amount<1||amount>Number(product.price||amount))return res.status(400).json({message:'This package has an invalid booking amount. Please contact Creatarsh.'});
+  try{
+    const localOrderId=id('ORD');
+    const response=await fetch(`${RAZORPAY_API}/orders`,{method:'POST',headers:{'Authorization':'Basic '+Buffer.from(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`).toString('base64'),'Content-Type':'application/json'},body:JSON.stringify({amount:amount*100,currency:'INR',receipt:localOrderId,notes:{productCode:product.code,customerId:String(req.auth.sub)}})});
+    const gateway=await response.json().catch(()=>({}));
+    if(!response.ok||!gateway.id)return res.status(502).json({message:'Payment provider could not create checkout. Please try again or contact us.'});
+    const customerDoc=await Customer.findById(req.auth.sub);
+    if(!customerDoc||!customerDoc.active)return res.status(401).json({message:'Customer account is unavailable.'});
+    const order=await Order.create({orderId:localOrderId,customer:customerDoc._id,productType:'SERVICE',productCode:product.code,productName:product.name,packagePrice:Number(product.price||0),bookingAmount:amount,amount,status:'PENDING_PAYMENT',business:String(b.company||customerDoc.company||'').trim(),requirements:String(b.requirements).trim(),acceptedTermsVersion:b.termsVersion||'2026-10',privacyNoticeVersion:b.privacyVersion||'2026-10',notes:'Booking payment collected through Razorpay checkout.',razorpayOrderId:gateway.id});
+    res.json({keyId:RAZORPAY_KEY_ID,orderId:gateway.id,localOrderId:order.orderId,amount:gateway.amount,currency:gateway.currency||'INR',name:'Creatarsh',description:`${product.name} — booking payment`,prefill:{name:customerDoc.name||'',email:customerDoc.email||'',contact:customerDoc.phone||''}});
+  }catch(e){console.error('Razorpay order creation failed:',e.message);res.status(502).json({message:'Could not start checkout. Please try again or request a quote.'});}
+});
+app.post('/api/customer/payments/razorpay/verify',requireCustomer,async(req,res)=>{
+  if(!dbReady||!RAZORPAY_KEY_SECRET)return res.status(503).json({message:'Payment verification is temporarily unavailable.'});
+  const b=req.body||{};
+  const orderId=String(b.razorpay_order_id||''),paymentId=String(b.razorpay_payment_id||''),signature=String(b.razorpay_signature||''),localOrderId=String(b.localOrderId||'');
+  if(!orderId||!paymentId||!signature||!localOrderId)return res.status(400).json({message:'Payment verification details are incomplete.'});
+  const order=await Order.findOne({orderId:localOrderId,razorpayOrderId:orderId,customer:req.auth.sub});
+  if(!order)return res.status(404).json({message:'Order not found for this account.'});
+  const expected=crypto.createHmac('sha256',RAZORPAY_KEY_SECRET).update(`${orderId}|${paymentId}`).digest('hex');
+  const supplied=Buffer.from(signature,'hex'),wanted=Buffer.from(expected,'hex');
+  if(supplied.length!==wanted.length||!crypto.timingSafeEqual(supplied,wanted))return res.status(400).json({message:'Payment signature could not be verified.'});
+  try{
+    const response=await fetch(`${RAZORPAY_API}/payments/${encodeURIComponent(paymentId)}`,{headers:{'Authorization':'Basic '+Buffer.from(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`).toString('base64')}});
+    const payment=await response.json().catch(()=>({}));
+    if(!response.ok||payment.order_id!==orderId||Number(payment.amount)!==Number(order.amount)*100)return res.status(400).json({message:'Payment details do not match this order.'});
+    if(payment.status!=='captured')return res.status(409).json({message:'Payment is not captured yet. If money was deducted, please contact support with payment ID '+paymentId+'.'});
+    order.status=Number(order.amount)<Number(order.packagePrice)?'PARTIALLY_PAID':'PAID';order.razorpayPaymentId=paymentId;order.razorpaySignature=signature;order.notes='Booking payment verified and captured through Razorpay.';await order.save();
+    await Payment.updateOne({transactionId:paymentId},{$set:{transactionId:paymentId,customer:order.customer,amount:Number(order.amount),gateway:'RAZORPAY',status:'SUCCESS',paidAt:new Date(),note:`Booking payment for ${order.productName} (${order.orderId})`}},{upsert:true});
+    res.json({ok:true,orderId:order.orderId,productName:order.productName,amount:order.amount});
+  }catch(e){console.error('Razorpay verification failed:',e.message);res.status(502).json({message:'Could not verify the payment right now. Contact support with payment ID '+paymentId+'.'});}
+});
+app.post('/api/webhooks/razorpay',async(req,res)=>{
+  if(!RAZORPAY_WEBHOOK_SECRET)return res.status(503).json({message:'Payment webhook is not configured.'});
+  const signature=String(req.headers['x-razorpay-signature']||'');
+  const expected=crypto.createHmac('sha256',RAZORPAY_WEBHOOK_SECRET).update(req.rawBody||Buffer.from('')).digest('hex');
+  const a=Buffer.from(signature,'hex'),b=Buffer.from(expected,'hex');
+  if(!signature||a.length!==b.length||!crypto.timingSafeEqual(a,b))return res.status(400).json({message:'Invalid webhook signature.'});
+  const event=req.body?.event;
+  if(event==='payment.captured'){
+    const p=req.body?.payload?.payment?.entity;
+    if(p?.order_id&&p?.id){
+      const order=await Order.findOne({razorpayOrderId:p.order_id});
+      if(order&&p.currency==='INR'&&Number(p.amount)===Number(order.amount)*100){
+        order.status=Number(order.amount)<Number(order.packagePrice)?'PARTIALLY_PAID':'PAID';order.razorpayPaymentId=p.id;await order.save();
+        await Payment.updateOne({transactionId:p.id},{$set:{transactionId:p.id,customer:order.customer,amount:Number(order.amount),gateway:'RAZORPAY',status:'SUCCESS',paidAt:new Date(),note:`Booking payment for ${order.productName} (${order.orderId})`}},{upsert:true});
+      }
+    }
+  }
+  res.json({received:true});
+});
 app.post('/api/customer/tickets',requireCustomer,async(req,res)=>{if(!dbReady)return res.status(503).json({message:'Support is temporarily unavailable.'}); if(!req.body.subject||!req.body.message)return res.status(400).json({message:'Subject and message are required.'}); if(!['WEBSITE','SOFTWARE','PAYMENT','DOMAIN','HOSTING','BUG','BILLING','OTHER'].includes(String(req.body.category||'OTHER').toUpperCase()))return res.status(400).json({message:'Invalid support category.'}); const t=await Ticket.create({ticketId:await ticketId(),customer:req.auth.sub,subject:String(req.body.subject).trim(),category:req.body.category||'GENERAL',priority:req.body.priority||'NORMAL',message:String(req.body.message).trim(),messages:[{senderType:'customer',sender:req.auth.sub,message:String(req.body.message).trim()}]}); return res.status(201).json(t);});
 app.post('/api/customer/tickets/:id/messages',requireCustomer,async(req,res)=>{const t=await Ticket.findOne({_id:req.params.id,customer:req.auth.sub});if(!t)return res.status(404).json({message:'Ticket not found.'});if(!req.body.message)return res.status(400).json({message:'Message is required.'});t.messages.push({senderType:'customer',sender:req.auth.sub,message:String(req.body.message).trim()});t.status='OPEN';await t.save();res.json(t);});
 app.get('/api/customer/approvals',requireCustomer,async(req,res)=>res.json(await Approval.find({customer:req.auth.sub}).populate('project','name projectId').sort({createdAt:-1})));
