@@ -82,56 +82,38 @@ async function content(){
 function renderBanners(d){
   const slider=$('#bannerSlider'),track=$('#bannerTrack'),dots=$('#bannerDots');
   if(!slider||!track||!dots)return;
-  const banners=(d.banners||[]).filter(x=>x.active!==false).sort((a,b)=>(a.order||0)-(b.order||0));
-  if(!banners.length){slider.parentElement.parentElement.style.display='none';return;}
-
-  const slideHtml=(x,i)=>`<article class="banner-slide" data-index="${i}">
+  const managed=(d.banners||[]).filter(x=>x.active!==false).sort((a,b)=>(a.order||0)-(b.order||0));
+  // Default campaign slides keep the homepage polished on a fresh database.
+  // As soon as a manager publishes a banner, manager-managed content takes over.
+  const banners=managed.length?managed:[
+    {eyebrow:'BUILD · DESIGN · LAUNCH',title:'Your business deserves\na bigger digital presence.',text:'Premium websites that help customers understand your offer, trust your brand and take the next step.',ctaText:'Explore website packages',ctaUrl:'/buy',_visual:'web'},
+    {eyebrow:'SELL ONLINE',title:'Turn your products\ninto an online storefront.',text:'Make it easier for customers to browse, compare and order—with a buying experience built around your business.',ctaText:'Build my online store',ctaUrl:'/contact?goal=more-sales',_visual:'store'},
+    {eyebrow:'WORK SMARTER',title:'Less manual work.\nMore room to grow.',text:'Bring your daily operations into one clear system with custom dashboards, CRM, inventory and business software.',ctaText:'Plan my business system',ctaUrl:'/contact?goal=save-time',_visual:'systems'}
+  ];
+  const slideHtml=(x,i)=>`<article class="banner-slide banner-slide-${x._visual||'managed'}" data-index="${i}" aria-label="Banner ${i+1} of ${banners.length}">
     ${x.image?`<img class="banner-media" src="${esc(String(x.image).trim())}" alt="${esc(x.title||'Featured banner')}" loading="${i===0?'eager':'lazy'}" referrerpolicy="no-referrer">`:''}
     <div class="banner-overlay" aria-hidden="true"></div>
-    <div class="banner-content">${x.eyebrow?`<span class="eyebrow">${esc(x.eyebrow)}</span>`:''}${x.title?`<h2>${esc(x.title)}</h2>`:''}${x.text?`<p>${esc(x.text)}</p>`:''}${x.ctaText?`<a class="btn primary" href="${esc(x.ctaUrl||'/contact')}">${esc(x.ctaText)} ↗</a>`:''}</div>
+    <div class="banner-content"><div class="banner-brand"><img src="/assets/creatarsh-logo.png" alt="Creatarsh"><span>CREATARSH <i>BUILD · DESIGN · LAUNCH</i></span></div>${x.eyebrow?`<span class="eyebrow">${esc(x.eyebrow)}</span>`:''}${x.title?`<h2>${esc(x.title).replace(/\r?\n/g,'<br>')}</h2>`:''}${x.text?`<p>${esc(x.text)}</p>`:''}${x.ctaText?`<a class="btn primary banner-cta" href="${esc(x.ctaUrl||'/contact')}">${esc(x.ctaText)} <span aria-hidden="true">↗</span></a>`:''}</div>
+    ${!x.image?`<div class="banner-art banner-art-${x._visual||'managed'}" aria-hidden="true"><div class="art-browser"><div class="art-browser-top"><i></i><i></i><i></i><span>YOUR NEXT CHAPTER</span></div><div class="art-browser-body"><div class="art-lines"><b></b><b></b><b></b><i></i></div><div class="art-product"><span>${x._visual==='store'?'SHOP ONLINE':x._visual==='systems'?'ONE WORKSPACE':'YOUR WEBSITE'}</span><strong>${x._visual==='store'?'Products that sell':x._visual==='systems'?'Everything in sync':'Made for growth'}</strong><div class="art-bars"><i></i><i></i><i></i></div></div></div></div><div class="art-orbit art-orbit-one"></div><div class="art-orbit art-orbit-two"></div><div class="art-tag art-tag-top">✦ Thoughtful design</div><div class="art-tag art-tag-bottom">↗ Built for business</div></div>`:''}
   </article>`;
-
-  // Clone the first/last banner so moving from the last banner back to the first
-  // is visually seamless instead of jumping backwards.
   const looped=banners.length>1?[banners[banners.length-1],...banners,banners[0]]:banners;
   track.innerHTML=looped.map((x,i)=>slideHtml(x,i)).join('');
+  track.style.width=`${looped.length*100}%`;
+  track.querySelectorAll('.banner-slide').forEach(slide=>{slide.style.flex=`0 0 ${100/looped.length}%`;slide.style.minWidth='0'});
   dots.innerHTML=banners.map((_,i)=>`<button type="button" class="banner-dot${i===0?' active':''}" data-banner="${i}" aria-label="Go to banner ${i+1}"></button>`).join('');
-
-  let physicalIndex=banners.length>1?1:0;
-  let timer;
-  let moving=false;
-
+  let physicalIndex=banners.length>1?1:0,timer,moving=false;
   const updateDots=()=>$$('.banner-dot').forEach((b,n)=>b.classList.toggle('active',n===((physicalIndex-1+banners.length)%banners.length)));
-  const apply=animate=>{
-    track.style.transition=animate?'transform .65s cubic-bezier(.22,.61,.36,1)':'none';
-    track.style.transform=`translate3d(-${physicalIndex*100}%,0,0)`;
-    updateDots();
-  };
-  const go=i=>{
-    if(banners.length===1)return;
-    physicalIndex=i+1;
-    moving=true;
-    apply(true);
-  };
-  const start=()=>{clearInterval(timer);if(banners.length>1)timer=setInterval(()=>go((physicalIndex-1+banners.length+1)%banners.length),3000)};
-
-  track.addEventListener('transitionend',e=>{
-    if(e.propertyName!=='transform'||!moving||banners.length<2)return;
-    moving=false;
-    if(physicalIndex===0){physicalIndex=banners.length;apply(false)}
-    else if(physicalIndex===banners.length+1){physicalIndex=1;apply(false)}
-  });
-
+  const apply=animate=>{track.style.transition=animate?'transform .7s cubic-bezier(.22,.61,.36,1)':'none';track.style.transform=`translate3d(-${physicalIndex*(100/looped.length)}%,0,0)`;updateDots()};
+  const go=i=>{if(banners.length===1)return;physicalIndex=i+1;moving=true;apply(true)};
+  const start=()=>{clearInterval(timer);if(banners.length>1&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches)timer=setInterval(()=>go((physicalIndex-1+1)%banners.length),3000)};
+  track.addEventListener('transitionend',e=>{if(e.propertyName!=='transform'||!moving||banners.length<2)return;moving=false;if(physicalIndex===0){physicalIndex=banners.length;apply(false)}else if(physicalIndex===banners.length+1){physicalIndex=1;apply(false)}});
   slider.querySelector('.banner-prev').onclick=()=>{go((physicalIndex-2+banners.length)%banners.length);start()};
   slider.querySelector('.banner-next').onclick=()=>{go((physicalIndex+banners.length)%banners.length);start()};
   $$('.banner-dot').forEach(b=>b.onclick=()=>{go(Number(b.dataset.banner));start()});
-  slider.addEventListener('mouseenter',()=>clearInterval(timer));
-  slider.addEventListener('mouseleave',start);
-  slider.addEventListener('touchstart',()=>clearInterval(timer),{passive:true});
-  slider.addEventListener('touchend',start,{passive:true});
-
-  apply(false);
-  start();
+  slider.addEventListener('mouseenter',()=>clearInterval(timer));slider.addEventListener('mouseleave',start);
+  slider.addEventListener('focusin',()=>clearInterval(timer));slider.addEventListener('focusout',start);
+  let touchStartX=0;slider.addEventListener('touchstart',e=>{clearInterval(timer);touchStartX=e.changedTouches?.[0]?.clientX||0},{passive:true});slider.addEventListener('touchend',e=>{const endX=e.changedTouches?.[0]?.clientX||touchStartX;const delta=endX-touchStartX;if(Math.abs(delta)>45){go((physicalIndex-1+(delta<0?1:-1)+banners.length)%banners.length)}start()},{passive:true});
+  apply(false);start();
 }
 function renderHome(d){
   const services=$('#serviceGrid');
@@ -470,7 +452,7 @@ async function init(){
   shell();
   const page=document.body.dataset.page;
   try{
-    if(page==='home'){const d=await content();renderHome(d);renderBanners(d);}
+    if(page==='home'){renderBanners({banners:[]});const d=await content();renderHome(d);renderBanners(d);}
     else if(page==='services'){const d=await content();renderServices(d);}
     else if(page==='service'){await renderServiceDetail();}
     else if(page==='work'){const d=await content();renderWork(d);}
@@ -483,7 +465,8 @@ async function init(){
   }catch(e){
     const root=document.querySelector('main')||document.body;
     const msg=esc(e.message||'The website content could not be loaded.');
-    if(page==='home'||page==='services'||page==='work'||page==='faq') root.innerHTML=`<section class="page-head"><div class="container"><span class="eyebrow">TEMPORARILY UNAVAILABLE</span><h1>We are updating the site.</h1><p>${msg}</p><a class="btn primary" href="/contact">Contact Creatarsh ↗</a></div></section>`;
+    if(page==='home'){const services=$('#serviceGrid'),work=$('#workGrid');if(services)services.innerHTML=`<div class="empty">Service listings are temporarily unavailable. <a href="/contact">Contact us ↗</a></div>`;if(work)work.innerHTML=`<div class="empty">Project previews are temporarily unavailable. <a href="/work">Browse demos ↗</a></div>`;console.error(e);}
+    else if(page==='services'||page==='work'||page==='faq') root.innerHTML=`<section class="page-head"><div class="container"><span class="eyebrow">TEMPORARILY UNAVAILABLE</span><h1>We are updating the site.</h1><p>${msg}</p><a class="btn primary" href="/contact">Contact Creatarsh ↗</a></div></section>`;
     else console.error(e);
   }
 }
