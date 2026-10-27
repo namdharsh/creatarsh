@@ -240,3 +240,119 @@ summary{color:#183624}
 @keyframes creatarsh-shimmer{0%{background-position:100% 0}100%{background-position:-120% 0}}
 @media(prefers-reduced-motion:reduce){.sk-line{animation:none;background:rgba(128,150,138,.14)}}
 @media(max-width:760px){.skeleton-grid,.skeleton-grid-work,.skeleton-grid-testimonials,.skeleton-grid-account{grid-template-columns:1fr}.skeleton-card{padding:20px}}
+
+/* Mobile-first usability refinement — less clutter, clearer banner hierarchy, reliable tap targets. */
+@media (max-width: 600px) {
+  html { scroll-padding-top: 76px; }
+  body { font-size: 15px; line-height: 1.55; }
+  .container { width: calc(100% - 32px); }
+  .nav { height: 64px; }
+  .nav-inner { gap: 8px; }
+  .logo { gap: 7px; font-size: 16px; letter-spacing: .01em; white-space: nowrap; }
+  .logo img { width: 34px; height: 34px; }
+  .nav-inner .nav-actions { gap: 6px; margin-left: auto; }
+  .nav-actions #accountLink { display: none; }
+  .mobile-menu-toggle { width: 40px; height: 40px; flex: 0 0 40px; }
+  .mobile-menu.open { top: 64px; max-height: calc(100dvh - 64px); overflow-y: auto; }
+  .mobile-menu.open a { padding: 14px 18px; }
+
+  /* The banner is one readable message, not a desktop composition squeezed into a phone. */
+  .homepage-banner-section { width: calc(100% - 20px); padding: 10px 0 18px; }
+  .homepage-banner-section .banner-slider { height: auto; min-height: 0; border-radius: 20px; box-shadow: 0 12px 32px rgba(19,57,36,.10); }
+  .homepage-banner-section .banner-track { height: auto; align-items: stretch; }
+  .homepage-banner-section .banner-slide { height: auto; min-height: 0; min-width: 0; align-items: stretch; padding-bottom: 62px; background: linear-gradient(145deg,#fbfdfb 0%,#eef7f1 100%); }
+  .homepage-banner-section .banner-slide::before { width: 280px; height: 280px; right: -100px; top: auto; bottom: -80px; opacity: .65; }
+  .homepage-banner-section .banner-slide::after { background-size: 16px 16px; opacity: .18; mask-image: linear-gradient(180deg,transparent,#000); }
+  .homepage-banner-section .banner-media { object-fit: cover; object-position: center; }
+  .homepage-banner-section .banner-overlay { background: linear-gradient(180deg,rgba(249,252,250,.98) 0%,rgba(249,252,250,.96) 62%,rgba(238,247,241,.78) 100%); }
+  .homepage-banner-section .banner-content,
+  .homepage-banner-section .banner-slide-managed .banner-content { width: 100%; max-width: none; padding: 20px 20px 12px; }
+  .banner-brand { gap: 8px; margin-bottom: 19px; font-size: 11px; letter-spacing: .08em; }
+  .banner-brand img { width: 34px; height: 34px; border-radius: 9px; padding: 3px; }
+  .banner-brand i { font-size: 8px; letter-spacing: .08em; }
+  .homepage-banner-section .banner-content .eyebrow { font-size: 9px; letter-spacing: .09em; padding: 6px 9px; line-height: 1.35; }
+  .homepage-banner-section .banner-content h2 { max-width: 100%; font-size: clamp(31px, 8.6vw, 40px); line-height: 1.04; letter-spacing: -.045em; margin: 15px 0 11px; overflow-wrap: anywhere; }
+  .homepage-banner-section .banner-content p { max-width: 100%; font-size: 14px; line-height: 1.5; color: #4b6254; margin: 0 0 17px; }
+  .homepage-banner-section .banner-cta { width: 100%; min-height: 46px; padding: 12px 14px; border-radius: 12px; font-size: 13px; white-space: normal; text-align: center; }
+  .homepage-banner-section .banner-slide:not(.banner-slide-managed) .banner-art { display: grid; position: relative; top: auto; right: auto; bottom: auto; transform: none; width: calc(100% - 36px); height: 150px; margin: 0 auto; opacity: .95; }
+  .homepage-banner-section .art-browser { width: 88%; min-height: 118px; border-radius: 12px; transform: rotate(-1.5deg); }
+  .homepage-banner-section .art-browser-top { height: 25px; padding: 0 10px; font-size: 7px; }
+  .homepage-banner-section .art-browser-body { min-height: 90px; padding: 9px; gap: 8px; grid-template-columns: .65fr 1.35fr; }
+  .homepage-banner-section .art-lines b { height: 5px; margin: 6px 0; }
+  .homepage-banner-section .art-lines b:first-child { height: 10px; }
+  .homepage-banner-section .art-lines i { width: 42px; height: 12px; margin-top: 8px; }
+  .homepage-banner-section .art-product { padding: 9px 8px; border-radius: 9px; }
+  .homepage-banner-section .art-product>span { font-size: 6px; }
+  .homepage-banner-section .art-product strong { font-size: 13px; margin: 5px 0 7px; }
+  .homepage-banner-section .art-bars { height: 18px; }
+  .homepage-banner-section .art-orbit { width: 150px; height: 150px; }
+  .homepage-banner-section .art-orbit-two { width: 190px; height: 190px; }
+  .homepage-banner-section .art-tag { font-size: 7px; padding: 5px 7px; border-radius: 8px; }
+  .homepage-banner-section .art-tag-top { top: 0; right: 0; }
+  .homepage-banner-section .art-tag-bottom { bottom: 0; left: 0; }
+  .homepage-banner-section .banner-arrow { top: auto; bottom: 12px; width: 36px; height: 36px; font-size: 24px; transform: none; background: #fff; border-color: #d5e4d9; box-shadow: none; }
+  .homepage-banner-section .banner-prev { left: 12px; }
+  .homepage-banner-section .banner-next { right: 12px; }
+  .homepage-banner-section .banner-dots { bottom: 27px; gap: 5px; }
+  .homepage-banner-section .banner-dot { width: 12px; height: 4px; }
+  .homepage-banner-section .banner-dot.active { width: 22px; }
+  .banner-slide-managed .banner-art { display: none !important; }
+
+  .sales-hero { padding: 42px 0 34px; }
+  .sales-copy h1 { font-size: clamp(37px, 10vw, 46px); line-height: 1.02; letter-spacing: -.05em; margin: 14px 0; }
+  .eyebrow { font-size: 9px; letter-spacing: .14em; }
+  .hero-lead { font-size: 15px; line-height: 1.6; }
+  .sales-hero-grid { gap: 26px; }
+  .sales-hero-card { min-width: 0; }
+  .result-window { width: 100%; border-radius: 18px; padding: 15px; }
+  .window-top { margin-bottom: 22px; }
+  .result-kpi strong { font-size: 25px; }
+  .result-flow { margin: 18px 0; gap: 6px; }
+  .result-flow div { padding: 10px; }
+  .mini-dashboard { gap: 6px; }
+  .mini-dashboard span { font-size: 10px; padding: 7px 8px; }
+  .actions { flex-direction: column; align-items: stretch; gap: 10px; margin: 22px 0 25px; }
+  .actions .btn, .btn-lg { width: 100%; min-height: 46px; padding: 12px 14px; text-align: center; white-space: normal; }
+  .trust-line { display: grid; grid-template-columns: 1fr; gap: 7px; }
+  .section { padding: 46px 0; }
+  .section-head { gap: 10px; margin-bottom: 22px; }
+  .section-head h2 { font-size: clamp(27px, 7.5vw, 33px); line-height: 1.1; letter-spacing: -.035em; }
+  .section-head p { font-size: 14px; line-height: 1.55; }
+  .outcome-grid, .process-grid, .proof-grid, .services, .work-grid, .testimonials { grid-template-columns: 1fr; }
+  .outcome-card { min-height: 0; padding: 21px; border-radius: 17px; }
+  .outcome-card h3 { font-size: 22px; margin: 15px 0 7px; }
+  .outcome-card b { margin-top: 16px; }
+  .proof-grid div { padding: 14px 4px; }
+  .before, .after { padding: 22px 19px; }
+  .before h2, .after h2 { font-size: 24px; }
+  .story-grid { gap: 24px; }
+  .story-grid>div>h2 { font-size: 31px; }
+  .final-cta { padding: 48px 0; }
+  .final-cta h2 { font-size: clamp(30px, 8vw, 38px); line-height: 1.08; }
+  .footer { padding: 35px 0; }
+  .footer-grid { gap: 22px; overflow-wrap: anywhere; }
+  .card { padding: 20px; border-radius: 17px; }
+  .page-head { padding: 50px 0 30px; }
+  .page-head h1, .service-hero h1 { font-size: clamp(36px, 10vw, 48px); line-height: 1.02; }
+  .page-head p, .service-hero p { font-size: 15px; }
+  .form-shell, .auth-card { width: 100%; min-width: 0; }
+  .auth-card { padding: 23px; }
+  .portal-row, .cookie-banner { gap: 12px; }
+  img, video, canvas, svg { max-width: 100%; }
+}
+@media (min-width: 601px) and (max-width: 900px) {
+  .homepage-banner-section .banner-slider, .homepage-banner-section .banner-track, .homepage-banner-section .banner-slide { height: 460px; min-height: 460px; }
+  .homepage-banner-section .banner-content { width: 68%; padding: 30px 36px; }
+  .homepage-banner-section .banner-content h2 { font-size: clamp(36px, 5.6vw, 48px); }
+  .banner-art { width: 42%; height: 300px; right: 2%; }
+  .art-browser-body { padding: 14px; gap: 10px; }
+  .nav-inner { gap: 12px; }
+  .logo { font-size: 17px; }
+  .nav-actions .btn { padding: 10px 12px; font-size: 12px; }
+}
+@media (max-width: 360px) {
+  .homepage-banner-section .banner-content { padding: 17px 15px 10px; }
+  .homepage-banner-section .banner-content h2 { font-size: 29px; }
+  .homepage-banner-section .banner-content p { font-size: 13px; }
+  .banner-brand { margin-bottom: 14px; }
+}

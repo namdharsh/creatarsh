@@ -1,4 +1,4 @@
-const CACHE='creatarsh-shell-v1';
+const CACHE='creatarsh-shell-v2-mobile';
 const SHELL=['/','/css/style.css','/js/site.js','/assets/creatarsh-logo.png','/manifest.webmanifest'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));
