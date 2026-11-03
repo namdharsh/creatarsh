@@ -1,6 +1,11 @@
-require('dotenv').config();
-const express = require('express');
 const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+const { loadConfig } = require('./config/env');
+const { connectDatabase, isDatabaseReady, disconnectDatabase } = require('./config/database');
+const { logger, requestLogger } = require('./lib/logger');
+const { healthRoutes } = require('./middleware/health');
+const { notFound, errorHandler } = require('./middleware/errors');
+const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const mongoose = require('mongoose');
@@ -11,21 +16,20 @@ const rateLimit = require('express-rate-limit');
 let nodemailer = null; try { nodemailer = require('nodemailer'); } catch (_) {}
 
 const app = express();
-const PORT = Number(process.env.PORT || 5000);
+const CONFIG = loadConfig();
+if (!CONFIG.mongoUri) throw new Error('MONGODB_URI must be configured in server/.env before starting Creatarsh.');
+const PORT = CONFIG.port;
 const ROOT = path.join(__dirname, '..');
 const CUSTOMER_DIR = path.join(ROOT, 'customer');
 const MANAGER_DIR = path.join(ROOT, 'manager');
-const JWT_SECRET = process.env.MANAGER_JWT_SECRET || process.env.JWT_SECRET;
-const CUSTOMER_JWT_SECRET = process.env.CUSTOMER_JWT_SECRET || JWT_SECRET;
-const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const JWT_SECRET = CONFIG.managerJwtSecret;
+const CUSTOMER_JWT_SECRET = CONFIG.customerJwtSecret;
+const IS_PRODUCTION = CONFIG.isProduction;
 const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || '';
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || '';
 const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET || '';
 const RAZORPAY_API = 'https://api.razorpay.com/v1';
-if (IS_PRODUCTION && (!process.env.MANAGER_JWT_SECRET || !process.env.CUSTOMER_JWT_SECRET || process.env.MANAGER_JWT_SECRET === process.env.CUSTOMER_JWT_SECRET)) {
-  throw new Error('Configure distinct MANAGER_JWT_SECRET and CUSTOMER_JWT_SECRET values in production.');
-}
-const corsOrigins = String(process.env.CORS_ORIGINS || '').split(',').map(v => v.trim()).filter(Boolean);
+const corsOrigins = CONFIG.corsOrigins;
 
 app.disable('x-powered-by');
 // Render/reverse-proxy aware: preserve the real client IP for rate limiting.
@@ -39,6 +43,8 @@ app.use(cors({ origin(origin, callback) {
 }, credentials: false }));
 app.use(express.json({ limit: '1mb', verify: (req, res, buf) => { if (req.originalUrl === '/api/webhooks/razorpay') req.rawBody = Buffer.from(buf); } }));
 app.use(express.urlencoded({ extended: true, limit: '8mb' }));
+app.use(requestLogger);
+healthRoutes(app, { isDatabaseReady });
 
 // Serve the customer website and manager assets from the same Express service.
 // This keeps CSS/JS/images available when the API and web app are deployed together.
@@ -213,8 +219,40 @@ app.get('/api/public/payment-config', (req,res)=>res.json({provider:'razorpay',e
 
 app.get('/api/public/pricing', async (req,res) => { if (!dbReady) return res.status(503).json({message:'Pricing is temporarily unavailable because the database is not connected.'}); try { const packages=await ServicePackage.find({active:true}).sort({order:1}); res.json({version:'2026-10',currency:'INR',packages}); } catch(e){ res.status(503).json({message:'Pricing is temporarily unavailable.'}); } });
 // SaaS storefront catalogue: all product and plan content comes from MongoDB manager records.
-app.get('/api/public/products', async (req,res)=>{ if(!dbReady)return res.status(503).json({message:'Product catalogue is temporarily unavailable.'}); try{const products=await SaaSProduct.find({status:'ACTIVE'}).select('code slug name shortDescription description icon category currency plans order').sort({order:1,updatedAt:-1}).lean();res.set('Cache-Control','public, max-age=60, stale-while-revalidate=300');res.json({products});}catch(e){res.status(503).json({message:'Product catalogue is temporarily unavailable.'});} });
-app.get('/api/public/products/:slug', async (req,res)=>{ if(!dbReady)return res.status(503).json({message:'Product details are temporarily unavailable.'}); try{const product=await SaaSProduct.findOne({slug:String(req.params.slug).toLowerCase(),status:'ACTIVE'}).lean();if(!product)return res.status(404).json({message:'Product not found.'});product.plans=(product.plans||[]).filter(x=>x.active!==false).sort((a,b)=>a.order-b.order);res.set('Cache-Control','public, max-age=60, stale-while-revalidate=300');res.json({product});}catch(e){res.status(503).json({message:'Product details are temporarily unavailable.'});} });
+app.get('/api/public/products', async (req, res) => {
+  if (!dbReady) return res.status(503).json({ message: 'Product catalogue is temporarily unavailable because the database is not connected.' });
+  try {
+    const products = await SaaSProduct.find({ status: 'ACTIVE' })
+      .select('code slug name shortDescription description valueProposition audience icon category currency plans order')
+      .sort({ order: 1, updatedAt: -1 })
+      .lean();
+    const publicProducts = products.map(product => ({
+      ...product,
+      plans: (product.plans || []).filter(plan => plan.active !== false).sort((a, b) => (a.order || 0) - (b.order || 0))
+    }));
+    res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
+    res.json({ products: publicProducts });
+  } catch (e) {
+    console.error('Public product catalogue failed:', e.message);
+    res.status(503).json({ message: 'Product catalogue is temporarily unavailable.' });
+  }
+});
+app.get('/api/public/products/:slug', async (req, res) => {
+  if (!dbReady) return res.status(503).json({ message: 'Product details are temporarily unavailable because the database is not connected.' });
+  try {
+    const slug = String(req.params.slug || '').trim().toLowerCase();
+    const product = await SaaSProduct.findOne({ slug, status: 'ACTIVE' })
+      .select('code slug name shortDescription description valueProposition audience icon category currency plans faqs seo')
+      .lean();
+    if (!product) return res.status(404).json({ message: 'Product not found.' });
+    product.plans = (product.plans || []).filter(plan => plan.active !== false).sort((a, b) => (a.order || 0) - (b.order || 0));
+    res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
+    res.json({ product });
+  } catch (e) {
+    console.error('Public product detail failed:', e.message);
+    res.status(503).json({ message: 'Product details are temporarily unavailable.' });
+  }
+});
 
 
 app.post('/api/public/orders', async (req,res) => res.status(410).json({message:'Please sign in and use the package booking flow.'}));
@@ -262,6 +300,7 @@ app.get('/api/public/portfolio/:slug', async (req, res) => {
 });
 
 app.get('/api/public/content', async (req, res) => {
+  if (!dbReady) return res.status(503).json({ message: 'Website content is temporarily unavailable because the database is not connected.' });
   try {
     const [services, portfolio, testimonials, faqs, banners, site] = await Promise.all([
       Service.find({ active: true }).sort({ order: 1, createdAt: -1 }), Portfolio.find({ active: true }).sort({ order: 1, createdAt: -1 }),
@@ -486,10 +525,37 @@ app.get('/api/manager/site', requireManager, async (req, res) => res.json(await 
 app.put('/api/manager/site', requireManager, async (req, res) => res.json(await Site.findOneAndUpdate({ key: 'main' }, { $set: { ...req.body, key: 'main' } }, { upsert: true, new: true })));
 
 // ---------- Error / start ----------
-app.use('/api', (req, res) => res.status(404).json({ message: 'API route not found.' }));
-app.use((err, req, res, next) => {
-  console.error('Unhandled request error:', err.message);
-  if (res.headersSent) return next(err);
-  res.status(500).json({ message: 'Something went wrong on the server.' });
-});
-app.listen(PORT, '0.0.0.0', () => console.log(`Creatarsh server running on 0.0.0.0:${PORT}`));
+app.use('/api', notFound);
+app.use(errorHandler);
+
+let httpServer;
+let shuttingDown = false;
+async function start() {
+  await connectDatabase(CONFIG.mongoUri);
+  httpServer = app.listen(PORT, '0.0.0.0', () => logger.info('server_started', { port: PORT }));
+}
+async function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  logger.info('server_shutdown_started', { signal });
+  if (httpServer) {
+    await new Promise((resolve) => httpServer.close(resolve));
+  }
+  try {
+    await disconnectDatabase();
+    process.exit(0);
+  } catch (error) {
+    logger.error('server_shutdown_failed', { errorName: error.name, message: error.message });
+    process.exit(1);
+  }
+}
+process.on('SIGTERM', () => void shutdown('SIGTERM'));
+process.on('SIGINT', () => void shutdown('SIGINT'));
+
+if (require.main === module) {
+  start().catch((error) => {
+    logger.error('server_start_failed', { errorName: error.name, message: error.message });
+    process.exit(1);
+  });
+}
+module.exports = { app, start, shutdown };

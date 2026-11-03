@@ -1,9 +1,14 @@
-const REDACT_KEYS = /authorization|cookie|password|secret|token|mongodb_uri|razorpay|api[_-]?key/i;
+const REDACT_KEYS = /authorization|cookie|password|secret|token|mongodb_uri|razorpay|api[_-]?key|smtp_pass|webhook/i;
 function redact(value, key = '') {
   if (REDACT_KEYS.test(key)) return '[REDACTED]';
   if (Array.isArray(value)) return value.map((item) => redact(item));
   if (value && typeof value === 'object') {
     return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, redact(v, k)]));
+  }
+  if (typeof value === 'string') {
+    return value
+      .replace(/(mongodb(?:\+srv)?:\/\/[^:\s]+:)[^@\s]+@/gi, '$1[REDACTED]@')
+      .replace(/(Bearer\s+)[A-Za-z0-9._~+\/-]+=*/gi, '$1[REDACTED]');
   }
   return value;
 }
