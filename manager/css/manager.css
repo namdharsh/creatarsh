@@ -36,3 +36,24 @@ th,td{border-color:#e7e9e8}
 .login-screen{background:#f6f7f6}
 .login-box h1{color:#20252b}
 @media(max-width:760px){.top{background:rgba(255,255,255,.95)}}
+
+
+/* Creatarsh Manager — light product-company workspace */
+:root{--bg:#f7f7f5;--side:#fff;--panel:#fff;--panel2:#f2f3f3;--line:#e3e6e7;--text:#20252a;--muted:#71808a;--green:#20252b;--danger:#b84b4b}
+body{background:#f7f7f5!important;color:#20252a!important;font-family:Inter,'DM Sans',Arial,sans-serif}
+.sidebar{background:#fff!important;border-right:1px solid #e3e6e7!important;box-shadow:4px 0 22px rgba(20,30,40,.025)}
+.brand{color:#20252b}.group,.nav-details summary{color:#89939a!important}
+.navitem{color:#65727b!important;border-radius:10px!important}.navitem:hover,.navitem.active{background:#f0f2f3!important;color:#20252b!important}
+.main{background:#f7f7f5}.top{background:rgba(250,250,249,.92)!important;border-bottom:1px solid #e3e6e7!important;color:#20252b!important}
+.top h1{color:#20252b}.top small,.muted{color:#75818a!important}
+.btn{background:#fff!important;border:1px solid #dfe3e5!important;color:#283139!important;border-radius:999px!important}
+.btn.primary{background:#20252b!important;border-color:#20252b!important;color:#fff!important}
+.btn.danger{color:#a34343!important;border-color:#ecdada!important}
+.card,.stat,.table-wrap,.modal-box{background:#fff!important;border:1px solid #e3e6e7!important;border-radius:16px!important;box-shadow:0 8px 28px rgba(20,30,40,.025)}
+.stat span{color:#7c8991}.stat strong{color:#20252b}
+.eyebrow{color:#75838d!important}.section-head h2{color:#20252b!important}
+th{color:#829099!important}td{color:#34414a!important;border-bottom-color:#edf0f1!important}
+.field label{color:#65727b!important}.field input,.field textarea,.field select{background:#fff!important;color:#20252b!important;border-color:#dfe3e5!important}
+.modal{background:rgba(25,32,38,.35)!important}.modal-box{color:#20252b}
+.badge{background:#eef1f2!important;color:#53616b!important}
+@media(max-width:760px){.sidebar.mobile-open{display:block!important;z-index:20;box-shadow:20px 0 60px rgba(0,0,0,.12)}}

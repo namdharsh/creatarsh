@@ -57,10 +57,10 @@ app.get('/account', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'account.
 app.get('/services', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'services.html')));
 // Service detail pages: support direct navigation, refreshes and the plural alias.
 app.get('/service', (req, res) => res.redirect('/services'));
-app.get(['/service/:slug', '/services/:slug'], (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'service.html')));
-app.get('/work', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'work.html')));
-app.get('/portfolio', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'work.html')));
-app.get('/portfolio/:slug', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'portfolio.html')));
+app.get(['/service/:slug', '/services/:slug'], (req, res) => res.redirect('/services'));
+app.get('/work', (req, res) => res.redirect('/#why'));
+app.get('/portfolio', (req, res) => res.redirect('/services'));
+app.get('/portfolio/:slug', (req, res) => res.redirect('/services'));
 app.get('/about', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'about.html')));
 app.get('/contact', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'contact.html')));
 app.get('/support', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'support.html')));
@@ -84,7 +84,7 @@ app.get('/manager', (req, res) => res.redirect('/manager/'));
 
 // ---------- Models ----------
 const serviceSchema = new mongoose.Schema({
-  title: { type: String, required: true, trim: true }, slug: { type: String, index: true }, description: String, icon: { type: String, default: '✦' },
+  title: { type: String, required: true, trim: true }, slug: { type: String, index: true }, description: String, category: String, icon: { type: String, default: '✦' },
   features: [String], deliverables: [String], designTypes: [String],
   packages: [{ name: String, price: String, description: String, features: [String], popular: { type: Boolean, default: false } }],
   offers: [String], startingPrice: { type: Number, default: 0 }, timeline: String,
@@ -98,7 +98,7 @@ const portfolioSchema = new mongoose.Schema({
 const testimonialSchema = new mongoose.Schema({ name: String, company: String, role: String, quote: String, rating: { type: Number, default: 5 }, avatar: String, approved: { type: Boolean, default: false }, order: { type: Number, default: 0 } }, { timestamps: true });
 const faqSchema = new mongoose.Schema({ question: String, answer: String, active: { type: Boolean, default: true }, order: { type: Number, default: 0 } }, { timestamps: true });
 const bannerSchema = new mongoose.Schema({ eyebrow: String, title: String, text: String, ctaText: String, ctaUrl: String, image: String, active: { type: Boolean, default: true }, order: { type: Number, default: 0 } }, { timestamps: true });
-const siteSchema = new mongoose.Schema({ key: { type: String, unique: true, default: 'main' }, heroTitle: String, heroText: String, footerText: String, email: String, whatsapp: String, phone: String, instagram: String, linkedin: String, youtube: String, github: String, announcement: String, aboutText: String }, { timestamps: true });
+const siteSchema = new mongoose.Schema({ key: { type: String, unique: true, default: 'main' }, heroTitle: String, heroText: String, heroEyebrow: String, heroCtaLabel: String, heroCtaUrl: String, productsTitle: String, productsText: String, valueIntro: String, pricingTitle: String, pricingText: String, footerText: String, email: String, whatsapp: String, phone: String, instagram: String, linkedin: String, youtube: String, github: String, announcement: String, aboutText: String }, { timestamps: true });
 const managerSchema = new mongoose.Schema({ username: { type: String, unique: true, lowercase: true, trim: true }, passwordHash: String, role: { type: String, default: 'manager' }, active: { type: Boolean, default: true }, lastLoginAt: Date }, { timestamps: true });
 const contractTemplateSchema = new mongoose.Schema({ code:{type:String,unique:true,index:true}, name:{type:String,required:true}, category:String, priceLabel:String, description:String, scope:String, milestones:String, timeline:String, deliverables:[String], ip:String, support:String, acceptance:String, termination:String, active:{type:Boolean,default:true} },{timestamps:true});
 const contractSchema = new mongoose.Schema({ contractId:{type:String,unique:true,index:true}, template:{type:mongoose.Schema.Types.ObjectId,ref:'ContractTemplate'}, customer:{type:mongoose.Schema.Types.ObjectId,ref:'Customer'}, project:{type:mongoose.Schema.Types.ObjectId,ref:'Project'}, title:String, customerDetails:{name:String,email:String,phone:String,company:String,address:String}, scope:String, price:Number, priceLabel:String, milestones:String, timeline:String, deliverables:[String], ip:String, support:String, acceptance:String, termination:String, status:{type:String,enum:['DRAFT','SENT','ACCEPTED','REJECTED','TERMINATED'],default:'DRAFT'}, acceptedAt:Date, acceptedIp:String },{timestamps:true});

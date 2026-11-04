@@ -161,7 +161,7 @@ function renderHome(d){
 
 function renderServices(d){const el=$('#allServices');if(!el)return;const serviceCards=(d.services||[]).map(x=>`<article class="card service-card"><a class="service-link" href="/buy"><div class="icon">${esc(x.icon||'✦')}</div><h3>${esc(x.title)}</h3><p>${esc(x.description)}</p><div class="price">${x.startingPrice?'From ₹'+Number(x.startingPrice).toLocaleString('en-IN'):''} ${x.timeline?' · '+esc(x.timeline):''}</div>${x.features?.length?`<ul class="muted">${x.features.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:''}<span class="service-more">Explore pricing, work & packages ↗</span></a></article>`).join('');el.innerHTML=serviceCards||'<div class="empty">No services published yet.</div>'}
 function renderWork(d){const el=$('#allWork');if(!el)return;el.innerHTML=(d.portfolio||[]).map(x=>{const slug=slugifyClient(x.title);return `<article class="card work-card"><a href="/portfolio/${encodeURIComponent(slug)}" style="display:block;height:100%"><div class="work-media">${x.media?.[0]?`<img src="${esc(x.media[0])}" alt="${esc(x.title)}" style="width:100%;height:100%;object-fit:cover">`:'CREATARSH'}</div><div class="work-body"><span class="tag">${esc(x.category||'Project')}</span><h3>${esc(x.title)}</h3><p>${esc(x.description||'')}</p>${x.technologies?.length?`<p class="muted" style="margin-top:12px">${x.technologies.map(esc).join(' · ')}</p>`:''}<span class="service-more">View project ↗</span></div></a></article>`}).join('')||'<div class="empty">No portfolio projects published yet.</div>'}
-function renderFaq(d){const el=$('#faqList');if(!el)return;const fallback=[['What services does Creatarsh provide?','Creatarsh provides website and web app development, mobile apps, custom business software, e-commerce, UI/UX, branding, AI-enabled solutions and related digital services.'],['How do I start a project?','Use the Start a Project or Contact page and submit your requirements. We review the brief and discuss scope, pricing, timeline and the next steps.'],['Are online prices final?','Some displayed prices are starting packages. Custom requirements, third-party services, taxes and additional scope may change the final quotation.'],['How do payments work?','Payment milestones and due dates are stated in the applicable quotation, invoice or project agreement. Work may be paused when a payment becomes overdue.'],['Can I request a refund?','You can request a refund or cancellation by contacting support with your order or invoice details. Eligibility is handled under the Refund & Cancellation Policy and applicable agreement.'],['How many revisions are included?','Revision limits depend on the selected package or signed agreement. Changes outside the agreed scope may require an additional fee.'],['How do I get technical support?','Email creatarshbusiness@gmail.com or call +91 7566743098. Include your order, project or invoice reference and a clear description of the issue.'],['How can I make a privacy request?','Contact creatarshbusiness@gmail.com. We may verify your identity before processing an access, correction, deletion or other privacy request.'],['How do I submit a grievance?','If normal support has not resolved your concern, use the Grievance Redressal page or email creatarshbusiness@gmail.com with your previous support details and requested resolution.'],['Do third-party services cost extra?','Domains, hosting, payment gateways, app stores, APIs, premium assets and other third-party services may have separate charges unless your quotation expressly includes them.']];const rows=(d.faqs&&d.faqs.length?d.faqs:fallback);el.innerHTML=rows.map(x=>`<details><summary>${esc(x.question||x[0])} <span>+</span></summary><p>${esc(x.answer||x[1])}</p></details>`).join('')}
+function renderFaq(d){const el=$('#faqList');if(!el)return;const fallback=[['What is Creatarsh?','Creatarsh is a software products company offering practical tools and business applications.'],['How do I get started?','Create one Creatarsh account, explore the product library and choose the product and plan that fits your needs.'],['How do plans work?','Each product plan lists its price and included features. Check the plan details and applicable terms before continuing.'],['Are subscriptions automatically renewed?','Automatic recurring billing is not yet enabled for all plans. The checkout and plan terms will state the applicable payment and renewal method.'],['Can I request a refund?','You can request a refund or cancellation by contacting support with your order or invoice details. Eligibility is handled under the Refund & Cancellation Policy and applicable agreement.'],['Can I use more than one Creatarsh product?','Yes. You can explore and choose separate products from the Creatarsh product library using the same account.'],['How do I get technical support?','Email creatarshbusiness@gmail.com or call +91 7566743098. Include your order, project or invoice reference and a clear description of the issue.'],['How can I make a privacy request?','Contact creatarshbusiness@gmail.com. We may verify your identity before processing an access, correction, deletion or other privacy request.'],['How do I submit a grievance?','If normal support has not resolved your concern, use the Grievance Redressal page or email creatarshbusiness@gmail.com with your previous support details and requested resolution.'],['Where can I get help?','Use the support page or email creatarshbusiness@gmail.com with your account email and product name.']];const rows=(d.faqs&&d.faqs.length?d.faqs:fallback);el.innerHTML=rows.map(x=>`<details><summary>${esc(x.question||x[0])} <span>+</span></summary><p>${esc(x.answer||x[1])}</p></details>`).join('')}
 function setupLead(){const f=$('#leadForm');if(!f)return;const c=customer();['name','email','whatsapp','company'].forEach(k=>{if(c&&f.elements[k])f.elements[k].value=c[k]||''});f.onsubmit=async e=>{e.preventDefault();const st=$('#formStatus'),b=f.querySelector('button[type=submit]');b.disabled=true;st.textContent='Sending…';try{const d=await api('/public/leads',{method:'POST',body:JSON.stringify(Object.fromEntries(new FormData(f)))});st.textContent=`Received · Enquiry ${d.enquiryId}`;f.reset()}catch(e){st.textContent=e.message}finally{b.disabled=false}}}
 function initAccountAuthModal(){
   const modal=$('#clientAuthModal');
@@ -640,4 +640,45 @@ function buyPage(){
   });
 }
 
-document.addEventListener('DOMContentLoaded',()=>{buyPage();cookieConsent();});
+
+async function loadProductStore(){
+  const data=await content().catch(()=>({services:[],banners:[],site:{}}));
+  const site=data.site||{};
+  const put=(id,value)=>{const el=document.getElementById(id);if(el&&value)el.textContent=value;};
+  put('storeHeroTitle',site.heroTitle||'Simple tools.\\nMore time for what matters.');
+  put('heroEyebrow',site.heroEyebrow||'SOFTWARE THAT GETS OUT OF YOUR WAY');
+  const heroCta=document.querySelector('.store-hero .actions .btn.primary');
+  if(heroCta){heroCta.textContent=site.heroCtaLabel||'Explore products ↓';heroCta.href=site.heroCtaUrl||'#products';}
+  put('storeHeroText',site.heroText||'Discover focused software for everyday work. Choose the product you need, compare plans clearly and grow at your own pace.');
+  put('productsTitle',site.productsTitle||'Tools that make work lighter.');
+  put('productsText',site.productsText||'Choose a focused tool for the task you want to simplify. Add more as your needs grow.');
+  put('valueIntro',site.valueIntro||'Useful software, without unnecessary complexity.');
+  put('pricingTitle',site.pricingTitle||'Choose what works for you.');
+  put('pricingText',site.pricingText||'Product plans are managed centrally and shown with clear inclusions.');
+  put('footerBrandLine',site.footerText||'Simple tools. More time for what matters.');
+  const hero=document.querySelector('.store-hero');
+  const banner=(data.banners||[]).filter(x=>x.active!==false&&x.image).sort((a,b)=>(a.order||0)-(b.order||0))[0];
+  if(hero&&banner){
+    hero.style.setProperty('--hero-banner-image',`url("${String(banner.image).replace(/["\\\\]/g,'')}")`);
+    hero.style.setProperty('--hero-banner-opacity',String(Math.max(0,Math.min(.25,Number(banner.imageOpacity??14)/100))));
+    hero.style.setProperty('--hero-banner-darkness',String(Math.max(0,Math.min(.6,Number(banner.overlayOpacity??18)/100))));
+    hero.classList.add('has-managed-banner');
+  }
+  const products=(data.services||[]).filter(x=>x.active!==false);
+  const cards=products.map((x,i)=>`<article class="card product-card"><div class="product-card-top"><span class="product-icon">${esc(x.icon||'✦')}</span><span class="tag">${esc(x.category||'SOFTWARE')}</span></div><h3>${esc(x.title)}</h3><p>${esc(x.description||'A focused tool to simplify everyday work.')}</p><ul>${(x.features||[]).slice(0,4).map(f=>`<li>${esc(f)}</li>`).join('')}</ul><div class="product-card-bottom"><span>${x.startingPrice?`From ₹${Number(x.startingPrice).toLocaleString('en-IN')}`:'Explore plans'}</span><a href="/buy">View plans ↗</a></div></article>`).join('');
+  const grid=document.getElementById('serviceGrid');if(grid)grid.innerHTML=cards||'<div class="empty">New products are being prepared. Check back soon.</div>';
+  const all=document.getElementById('allServices');if(all)all.innerHTML=cards||'<div class="empty">New products are being prepared. Check back soon.</div>';
+  const plansRoot=document.getElementById('homePlans');
+  const pricingRoot=document.getElementById('packageGrid');
+  if(plansRoot||pricingRoot){
+    try{
+      const pricing=await api('/public/pricing');
+      const packages=(pricing.packages||[]).filter(x=>x.active!==false);
+      const markup=packages.map(x=>`<article class="card pricing-card"><span class="tag">${esc(x.category||'PLAN')}</span><h3>${esc(x.name)}</h3><p>${esc(x.description||'Access to the tools and features listed in this plan.')}</p><div class="plan-price">₹${Number(x.price||0).toLocaleString('en-IN')}<small>${x.billingType==='MONTHLY'?'/ month':'one time'}</small></div><ul>${(x.features||[]).slice(0,6).map(f=>`<li>${esc(f)}</li>`).join('')}</ul><a class="btn primary" href="/register?next=${encodeURIComponent('/account')}">Get started</a></article>`).join('');
+      if(plansRoot)plansRoot.innerHTML=markup||'<div class="empty">Plans will be published here soon.</div>';
+      if(pricingRoot)pricingRoot.innerHTML=markup||'<div class="empty">Plans will be published here soon.</div>';
+    }catch(e){const msg='<div class="empty">Plans are temporarily unavailable. Please try again later.</div>';if(plansRoot)plansRoot.innerHTML=msg;if(pricingRoot)pricingRoot.innerHTML=msg;}
+  }
+}
+
+document.addEventListener('DOMContentLoaded',()=>{shell();loadProductStore();cookieConsent();});
