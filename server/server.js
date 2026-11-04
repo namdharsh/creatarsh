@@ -48,6 +48,8 @@ app.use('/js', express.static(path.join(CUSTOMER_DIR, 'js')));
 app.get('/manifest.webmanifest', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'manifest.webmanifest')));
 app.get('/sw.js', (req, res) => { res.set('Content-Type','application/javascript'); res.sendFile(path.join(CUSTOMER_DIR, 'sw.js')); });
 app.use('/manager', express.static(MANAGER_DIR, { extensions: ['html'] }));
+app.use('/tools/resume', express.static(path.join(CUSTOMER_DIR, 'tools', 'resume'), { extensions: ['html'] }));
+
 app.get('/robots.txt', (req, res) => res.sendFile(path.join(ROOT, 'robots.txt')));
 app.get('/sitemap.xml', (req, res) => res.sendFile(path.join(ROOT, 'sitemap.xml')));
 app.get('/', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'index.html')));
@@ -58,6 +60,8 @@ app.get('/services', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'service
 // Service detail pages: support direct navigation, refreshes and the plural alias.
 app.get('/service', (req, res) => res.redirect('/services'));
 app.get(['/service/:slug', '/services/:slug'], (req, res) => res.redirect('/services'));
+app.get('/tools', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'tools', 'index.html')));
+app.get('/tools/resume', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'tools', 'resume', 'index.html')));
 app.get('/work', (req, res) => res.redirect('/#why'));
 app.get('/portfolio', (req, res) => res.redirect('/services'));
 app.get('/portfolio/:slug', (req, res) => res.redirect('/services'));
@@ -86,6 +90,7 @@ app.get('/manager', (req, res) => res.redirect('/manager/'));
 const serviceSchema = new mongoose.Schema({
   title: { type: String, required: true, trim: true }, slug: { type: String, index: true }, description: String, category: String, icon: { type: String, default: '✦' },
   features: [String], deliverables: [String], designTypes: [String],
+  isDigitalTool: { type: Boolean, default: false }, toolUrl: { type: String, default: '' }, toolButtonText: { type: String, default: 'Try now' }, toolBadge: { type: String, default: 'AVAILABLE NOW' }, toolAudience: { type: String, default: '' },
   packages: [{ name: String, price: String, description: String, features: [String], popular: { type: Boolean, default: false } }],
   offers: [String], startingPrice: { type: Number, default: 0 }, timeline: String,
   active: { type: Boolean, default: true }, order: { type: Number, default: 0 }
@@ -126,12 +131,43 @@ const Counter = mongoose.model('Counter', counterSchema); const Lead = mongoose.
 let dbReady = false;
 mongoose.connection.on('connected', () => { dbReady = true; console.log('MongoDB connected'); });
 mongoose.connection.on('disconnected', () => { dbReady = false; console.warn('MongoDB disconnected'); });
+mongoose.connection.on('connected', async () => {
+  try {
+    await Service.updateOne(
+      { slug: 'resume-studio' },
+      { $setOnInsert: {
+        title: 'Creatarsh Resume Studio',
+        slug: 'resume-studio',
+        category: 'Career',
+        description: 'Create a polished, professional resume with 100 template combinations, a live A4 preview, guided sections and PDF export.',
+        icon: 'CV',
+        features: ['100 resume template combinations', 'Live A4 preview', 'Resume quality checklist', 'PDF export', 'Local autosave and backup'],
+        active: true,
+        isDigitalTool: true,
+        toolUrl: '/tools/resume/',
+        toolButtonText: 'Try now',
+        toolBadge: 'POPULAR',
+        toolAudience: 'Students, graduates and professionals',
+        order: 1
+      } },
+      { upsert: true }
+    );
+  } catch (error) {
+    console.error('Digital tools seed failed:', error.message);
+  }
+});
 if (process.env.MONGODB_URI) {
   mongoose.connect(process.env.MONGODB_URI).catch(err => console.error('MongoDB connection failed:', err.message));
 } else console.warn('MONGODB_URI is not configured. Database features will be unavailable.');
 
 // ---------- Utilities ----------
 function cleanArray(v) { return Array.isArray(v) ? v.map(x => String(x).trim()).filter(Boolean) : []; }
+function cleanToolPath(value) {
+  const p = String(value || '').trim();
+  if (!p) return '';
+  if (!p.startsWith('/tools/') || p.startsWith('//') || p.includes('\\') || p.split('/').includes('..') || /[\r\n]/.test(p)) return null;
+  return p;
+}
 function slugify(v) { return String(v || '').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
 function cleanPackages(v) { return Array.isArray(v) ? v.map(x => ({ name:String(x?.name||'').trim(), price:String(x?.price||'').trim(), description:String(x?.description||'').trim(), features:cleanArray(x?.features), popular:!!x?.popular })).filter(x=>x.name) : []; }
 function id(prefix) { return `${prefix}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`; }
@@ -183,6 +219,28 @@ mongoose.connection.once('connected', () => { seed().then(async () => { await Se
 
 // ---------- Public API ----------
 app.get('/api/health', (req, res) => res.json({ ok: true, database: dbReady, service: 'creatarsh-api' }));
+app.get('/api/public/tools', async (req, res) => {
+  if (!dbReady) return res.status(503).json({ message: 'Digital tools are temporarily unavailable because the database is not connected.' });
+  try {
+    const items = await Service.find({ active: true, isDigitalTool: true }).sort({ order: 1, createdAt: -1 }).lean();
+    const tools = items.map(item => {
+      const rawUrl = String(item.toolUrl || '').trim();
+      const safeUrl = rawUrl.startsWith('/tools/') && !rawUrl.startsWith('//') && !rawUrl.includes('\\') && !rawUrl.split('/').includes('..') ? rawUrl : '';
+      return {
+        id: String(item._id), title: item.title, slug: item.slug || slugify(item.title),
+        category: item.category || 'Digital Tools', description: item.description || '',
+        icon: item.icon || '✦', badge: item.toolBadge || 'AVAILABLE NOW',
+        buttonText: item.toolButtonText || 'Try now', audience: item.toolAudience || '',
+        url: safeUrl, order: Number(item.order || 0)
+      };
+    }).filter(item => item.url);
+    res.set('Cache-Control', 'no-store');
+    res.json({ tools, count: tools.length });
+  } catch (e) {
+    res.status(503).json({ message: 'Digital tools are temporarily unavailable.' });
+  }
+});
+
 app.get('/api/public/payment-config', (req,res)=>res.json({provider:'razorpay',enabled:Boolean(RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET),keyId:RAZORPAY_KEY_ID||null,currency:'INR'}));
 
 app.get('/api/public/pricing', async (req,res) => { if (!dbReady) return res.status(503).json({message:'Pricing is temporarily unavailable because the database is not connected.'}); try { const packages=await ServicePackage.find({active:true}).sort({order:1}); res.json({version:'2026-10',currency:'INR',packages}); } catch(e){ res.status(503).json({message:'Pricing is temporarily unavailable.'}); } });
@@ -427,8 +485,8 @@ app.delete('/api/manager/catalogue/:id', requireManager, async (req,res)=>{await
 const cms = { services: Service, portfolio: Portfolio, testimonials: Testimonial, faq: FAQ, banners: Banner };
 for (const [key, Model] of Object.entries(cms)) {
   app.get(`/api/manager/${key}`, requireManager, async (req, res) => res.json(await Model.find().sort({ order: 1, createdAt: -1 })));
-  app.post(`/api/manager/${key}`, requireManager, async (req, res) => { const d = { ...req.body }; if (key === 'services' || key === 'portfolio') { d.features = cleanArray(d.features); d.technologies = cleanArray(d.technologies); d.media = cleanArray(d.media); d.results = cleanArray(d.results); } if (key === 'services') { d.slug = d.slug || slugify(d.title); d.deliverables = cleanArray(d.deliverables); d.designTypes = cleanArray(d.designTypes); d.offers = cleanArray(d.offers); d.packages = cleanPackages(d.packages); } const item = await Model.create(d); res.status(201).json(item); });
-  app.put(`/api/manager/${key}/:id`, requireManager, async (req, res) => { const d = { ...req.body }; if (key === 'services' || key === 'portfolio') { d.features = cleanArray(d.features); d.technologies = cleanArray(d.technologies); d.media = cleanArray(d.media); d.results = cleanArray(d.results); } if (key === 'services') { d.slug = d.slug || slugify(d.title); d.deliverables = cleanArray(d.deliverables); d.designTypes = cleanArray(d.designTypes); d.offers = cleanArray(d.offers); d.packages = cleanPackages(d.packages); } const item = await Model.findByIdAndUpdate(req.params.id, d, { new: true }); if (!item) return res.status(404).json({ message: 'Item not found.' }); res.json(item); });
+  app.post(`/api/manager/${key}`, requireManager, async (req, res) => { const d = { ...req.body }; if (key === 'services' || key === 'portfolio') { d.features = cleanArray(d.features); d.technologies = cleanArray(d.technologies); d.media = cleanArray(d.media); d.results = cleanArray(d.results); } if (key === 'services') { d.slug = d.slug || slugify(d.title); d.deliverables = cleanArray(d.deliverables); d.designTypes = cleanArray(d.designTypes); d.offers = cleanArray(d.offers); d.packages = cleanPackages(d.packages); d.isDigitalTool = d.isDigitalTool === true || d.isDigitalTool === 'true'; const toolPath = cleanToolPath(d.toolUrl); if (toolPath === null) return res.status(400).json({ message: 'Tool launch URL must be a safe internal path beginning with /tools/.' }); d.toolUrl = toolPath; d.toolButtonText = String(d.toolButtonText || 'Try now').slice(0, 32); d.toolBadge = String(d.toolBadge || 'AVAILABLE NOW').slice(0, 32); d.toolAudience = String(d.toolAudience || '').slice(0, 120); } const item = await Model.create(d); res.status(201).json(item); });
+  app.put(`/api/manager/${key}/:id`, requireManager, async (req, res) => { const d = { ...req.body }; if (key === 'services' || key === 'portfolio') { d.features = cleanArray(d.features); d.technologies = cleanArray(d.technologies); d.media = cleanArray(d.media); d.results = cleanArray(d.results); } if (key === 'services') { d.slug = d.slug || slugify(d.title); d.deliverables = cleanArray(d.deliverables); d.designTypes = cleanArray(d.designTypes); d.offers = cleanArray(d.offers); d.packages = cleanPackages(d.packages); d.isDigitalTool = d.isDigitalTool === true || d.isDigitalTool === 'true'; const toolPath = cleanToolPath(d.toolUrl); if (toolPath === null) return res.status(400).json({ message: 'Tool launch URL must be a safe internal path beginning with /tools/.' }); d.toolUrl = toolPath; d.toolButtonText = String(d.toolButtonText || 'Try now').slice(0, 32); d.toolBadge = String(d.toolBadge || 'AVAILABLE NOW').slice(0, 32); d.toolAudience = String(d.toolAudience || '').slice(0, 120); } const item = await Model.findByIdAndUpdate(req.params.id, d, { new: true }); if (!item) return res.status(404).json({ message: 'Item not found.' }); res.json(item); });
   app.delete(`/api/manager/${key}/:id`, requireManager, async (req, res) => { await Model.findByIdAndDelete(req.params.id); res.json({ ok: true }); });
 }
 app.get('/api/manager/site', requireManager, async (req, res) => res.json(await Site.findOne({ key: 'main' }) || {}));

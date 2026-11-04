@@ -7,3 +7,4 @@ uploads/*
 # Environment variants are local secrets; commit only the safe template.
 .env.*
 !.env.example
+!server/.env.example

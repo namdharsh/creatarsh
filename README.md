@@ -41,3 +41,17 @@ JavaScript syntax checks pass for the customer website, manager interface and No
 
 ## Skeleton loading
 Server-backed customer storefront content (hero copy, products, plans and managed banner images) and Manager screens use animated skeleton placeholders while requests are in flight. Account dashboard and FAQ areas also retain their skeleton placeholders. Reduced-motion preferences disable the shimmer animation.
+
+
+## Digital Tools catalogue and Resume Studio
+- Public catalogue: `/tools` (the **Digital Tools** identity page).
+- Resume Studio: `/tools/resume/`; its separate template gallery is `/tools/resume/templates.html`.
+- Tool cards are read from MongoDB through `GET /api/public/tools`; only active records marked `isDigitalTool` are returned.
+- Manager: sign in at `/manager/` and open **Digital Tools** to create, edit and show/hide tool cards. Hiding a tool is reversible and does not delete its catalogue record. The same CMS collection powers the existing Products & Services section.
+- Tool launch URLs are restricted server-side to safe internal `/tools/...` paths. The Resume Studio card is inserted on first successful MongoDB connection and is not overwritten on later restarts, so manager edits persist.
+- If MongoDB is not configured or unavailable, the catalogue shows a retry/error state instead of silently showing stale hard-coded cards.
+
+## Repository hygiene
+- Never commit `.env`, API credentials, database connection strings, JWT secrets or payment secrets. Configure these through your deployment environment and use `server/.env.example` only as a template.
+
+Run `node tests/digital-tools-smoke.js` from the repository root to check the Digital Tools integration and ensure no real server `.env` is present.

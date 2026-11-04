@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f6f7f9">
+  <title>Resume Studio — Creatarsh</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="index.html"><img src="assets/creatarsh-logo.png" alt="Creatarsh"><span class="brand-divider"></span><span>Resume Studio</span></a>
+  <div class="top-actions"><span class="save-state" id="saveState">All changes saved</span><button class="btn btn-quiet" id="importBtn">Import</button><input id="importFile" type="file" accept="application/json" hidden><button class="btn btn-quiet" id="backupBtn">Backup</button><button class="btn btn-quiet" id="resetBtn">Reset</button><button class="btn btn-dark" id="downloadBtn"><span>↓</span> Download PDF</button></div>
+</header>
+<main class="shell">
+  <section class="intro">
+    <div><div class="eyebrow"><span class="eyebrow-dot"></span> YOUR NEXT CHAPTER STARTS HERE</div><h1>Make your experience<br><em>stand out.</em></h1><p>Build a clear, confident resume that puts your best work first.</p><div class="intro-chips"><span>ATS-conscious layouts</span><span>Live A4 preview</span><span>Private by default</span></div></div>
+    <div class="progress-card"><div class="progress-head"><span>Resume completeness</span><strong id="progressLabel">Getting started</strong></div><div class="progress-track"><span id="progressBar"></span></div><small id="progressHint">Add your details to build a stronger resume.</small></div>
+  </section>
+  <div class="workspace">
+    <section class="editor-panel">
+      <div class="panel-heading"><div><span class="step-label">YOUR DETAILS</span><h2>Build your resume</h2></div><span class="live-pill"><i></i> Live preview</span></div>
+      <nav class="tabs" aria-label="Resume sections">
+        <button class="tab active" data-tab="personal">01 <span>Contact</span></button><button class="tab" data-tab="summary">02 <span>Profile</span></button><button class="tab" data-tab="experience">03 <span>Experience</span></button><button class="tab" data-tab="education">04 <span>Education</span></button><button class="tab" data-tab="projects">05 <span>Projects</span></button><button class="tab" data-tab="skills">06 <span>Skills</span></button><button class="tab" data-tab="extras">07 <span>More</span></button>
+      </nav>
+      <form id="resumeForm">
+        <section class="form-section active" id="section-personal">
+          <div class="section-title"><div><h3>Personal information</h3><p>Let employers know how to reach you.</p></div><span class="section-number">01 / 07</span></div>
+          <div class="field-grid"><label class="field span-2">Full name<input id="name" placeholder="e.g. Alex Morgan" value=""></label><label class="field">Professional title<input id="title" placeholder="e.g. Product Designer" value=""></label><label class="field">Email address<input id="email" type="email" placeholder="alex@email.com" value=""></label><label class="field">Phone number<input id="phone" placeholder="+91 98765 43210" value=""></label><label class="field">Location<input id="location" placeholder="City, Country" value=""></label><label class="field span-2">LinkedIn / Portfolio URL<input id="link" placeholder="linkedin.com/in/yourname" value=""></label></div>
+        </section>
+        <section class="form-section" id="section-summary">
+          <div class="section-title"><div><h3>Professional summary</h3><p>A short introduction that makes a strong first impression.</p></div><span class="section-number">02 / 07</span></div>
+          <label class="field">Your summary<textarea id="summary" rows="6" placeholder="Write 2–4 sentences about your experience, strengths and the value you bring."></textarea><small class="hint">Tip: Focus on your experience, strongest skills and the value you bring.</small></label>
+        </section>
+        <section class="form-section" id="section-experience">
+          <div class="section-title"><div><h3>Work experience</h3><p>Show the impact you have made, not just your responsibilities.</p></div><span class="section-number">03 / 07</span></div>
+          <div id="experienceList"></div><button type="button" class="add-button" id="addExperience">＋ Add another experience</button>
+        </section>
+        <section class="form-section" id="section-education">
+          <div class="section-title"><div><h3>Education</h3><p>Add your most relevant academic qualifications.</p></div><span class="section-number">04 / 07</span></div>
+          <div id="educationList"></div><button type="button" class="add-button" id="addEducation">＋ Add education</button>
+        </section>
+        <section class="form-section" id="section-projects">
+          <div class="section-title"><div><h3>Projects & achievements</h3><p>Showcase work that demonstrates what you can do.</p></div><span class="section-number">05 / 07</span></div>
+          <div id="projectList"></div><button type="button" class="add-button" id="addProject">＋ Add project</button>
+        </section>
+        <section class="form-section" id="section-skills">
+          <div class="section-title"><div><h3>Skills & strengths</h3><p>Choose skills that are relevant to the role you want.</p></div><span class="section-number">06 / 07</span></div>
+          <label class="field">Your skills<input id="skills" value=""><small class="hint">Separate each skill with a comma.</small></label>
+          <label class="field">Additional information<textarea id="additional" rows="3" placeholder="Other relevant details (optional)"></textarea></label>
+        </section>
+        <section class="form-section" id="section-extras">
+          <div class="section-title"><div><h3>Additional details</h3><p>Include relevant certifications, languages and accomplishments.</p></div><span class="section-number">07 / 07</span></div>
+          <label class="field">Certifications<textarea id="certifications" rows="3" placeholder="Certification · Issuing organization · Year"></textarea></label>
+          <label class="field">Languages<textarea id="languages" rows="2" placeholder="English (Professional), Hindi (Native)"></textarea></label>
+          <label class="field">Awards & volunteering<textarea id="awards" rows="3" placeholder="Relevant awards, volunteering or leadership activities"></textarea></label>
+        </section>
+        <div class="form-footer"><button type="button" class="btn btn-quiet" id="prevBtn" disabled>← Back</button><span id="stepText">Step 1 of 7</span><button type="button" class="btn btn-dark" id="nextBtn">Continue <span>→</span></button></div>
+      </form>
+    </section>
+    <aside class="preview-panel">
+      <div class="preview-toolbar"><div><span class="step-label">YOUR DOCUMENT</span><h2>Live preview</h2></div><div class="template-switch"><span class="selected-template-label" id="selectedTemplateLabel">Classic ATS</span><a class="btn btn-quiet choose-template-link" href="templates.html">Browse 100+ templates ↗</a></div></div>
+      <div class="paper-wrap"><article class="resume classic" id="resumePreview">
+        <header class="resume-header"><h1 id="pName">Your Name</h1><div class="resume-role" id="pTitle">Professional Title</div><div class="contact-line" id="pContact"></div><div class="contact-line" id="pLink"></div></header>
+        <section class="resume-block" id="pSummaryBlock"><h2>PROFILE</h2><p id="pSummary"></p></section>
+        <section class="resume-block" id="pExperienceBlock"><h2>EXPERIENCE</h2><div id="pExperience"></div></section>
+        <section class="resume-block" id="pEducationBlock"><h2>EDUCATION</h2><div id="pEducation"></div></section>
+        <section class="resume-block" id="pProjectsBlock"><h2>SELECTED PROJECTS</h2><div id="pProjects"></div></section>
+        <section class="resume-block" id="pSkillsBlock"><h2>CORE SKILLS</h2><p id="pSkills"></p></section>
+        <section class="resume-block" id="pAdditionalBlock"><h2>ADDITIONAL INFORMATION</h2><p id="pAdditional"></p></section>
+        <section class="resume-block" id="pLanguagesBlock"><h2>LANGUAGES</h2><p id="pLanguages"></p></section>
+        <section class="resume-block" id="pAwardsBlock"><h2>AWARDS & LEADERSHIP</h2><p id="pAwards"></p></section>
+      </article></div>
+      <div class="preview-foot"><span><i class="status-dot"></i> Updates as you type</span><span>A4 · 210 × 297 mm</span></div>
+      <section class="insight-panel"><div class="insight-head"><div><span class="step-label">SMART REVIEW</span><h3>Resume health check</h3></div><strong id="qualityScore">—</strong></div><div id="qualityList" class="quality-list"></div><div class="job-match"><label class="field">Paste a job description to check relevance<textarea id="jobDescription" rows="4" placeholder="Paste the job description here. We'll compare its keywords with your resume locally."></textarea></label><div class="match-row"><span id="matchText">Job match not checked</span><button class="btn btn-quiet" id="matchBtn">Check match</button></div></div><button class="cover-button" id="coverBtn">✦ Create a cover letter draft</button></section>
+    </aside>
+  </div>
+  <footer class="page-foot"><span>Made with care by <strong>Creatarsh</strong></span><span>Your information stays in this browser in this demo.</span></footer>
+</main>
+<template id="experienceTemplate"><div class="repeat-card"><div class="repeat-head"><strong>Experience</strong><button type="button" class="remove-button">Remove</button></div><div class="field-grid"><label class="field">Job title<input class="exp-role" placeholder="e.g. Product Designer"></label><label class="field">Company<input class="exp-company" placeholder="Company name"></label><label class="field">Start date<input class="exp-start" placeholder="Jan 2022"></label><label class="field">End date<input class="exp-end" placeholder="Present"></label><label class="field span-2">Key achievements<textarea class="exp-desc" rows="3" placeholder="Describe your impact and results."></textarea></label></div></div></template>
+<template id="projectTemplate"><div class="repeat-card"><div class="repeat-head"><strong>Project</strong><button type="button" class="remove-button">Remove</button></div><div class="field-grid"><label class="field span-2">Project name<input class="proj-name" placeholder="e.g. Customer analytics dashboard"></label><label class="field">Your role / tools<input class="proj-role" placeholder="Designer · Figma, React"></label><label class="field">Link<input class="proj-link" placeholder="Project URL (optional)"></label><label class="field span-2">What you built / achieved<textarea class="proj-desc" rows="3" placeholder="Explain the problem, your contribution and the outcome."></textarea></label></div></div></template>
+<template id="educationTemplate"><div class="repeat-card"><div class="repeat-head"><strong>Education</strong><button type="button" class="remove-button">Remove</button></div><div class="field-grid"><label class="field span-2">Degree / qualification<input class="edu-degree" placeholder="e.g. Bachelor of Design"></label><label class="field">Institution<input class="edu-school" placeholder="University / College"></label><label class="field">Year<input class="edu-year" placeholder="2020 – 2024"></label></div></div></template>
+<div class="toast" id="toast" role="status" aria-live="polite"></div><script src="templates.js"></script><script src="app.js"></script>
+</body></html>
