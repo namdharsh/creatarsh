@@ -14,6 +14,25 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 // Loading placeholders are structural only; real content is rendered exclusively from API responses.
 function skeletonCards(count=3,kind='card'){return `<div class="skeleton-grid skeleton-grid-${kind}" aria-label="Loading content from Creatarsh server" aria-busy="true">${Array.from({length:count},()=>`<article class="skeleton-card"><i class="sk-line sk-kicker"></i><i class="sk-line sk-title"></i><i class="sk-line sk-copy"></i><i class="sk-line sk-copy short"></i><i class="sk-line sk-action"></i></article>`).join('')}</div>`}
 function skeletonRows(count=5){return `<div class="skeleton-rows" aria-label="Loading content from Creatarsh server" aria-busy="true">${Array.from({length:count},()=>`<div class="skeleton-row"><i class="sk-line sk-title"></i><i class="sk-line sk-copy"></i></div>`).join('')}</div>`;}
+function skeletonText(lines=2){return `<span class="skeleton-text-lines" aria-label="Loading content" aria-busy="true">${Array.from({length:lines},(_,i)=>`<i class="sk-line ${i===lines-1?'short':''}"></i>`).join('')}</span>`;}
+function showStorefrontSkeletons(){
+  const grid=$('#serviceGrid')||$('#allServices');
+  if(grid)grid.innerHTML=skeletonCards(6,'products');
+  const all=$('#allServices');if(all&&all!==grid)all.innerHTML=skeletonCards(6,'products');
+  const plans=$('#homePlans'),packageGrid=$('#packageGrid');
+  if(plans)plans.innerHTML=skeletonCards(3,'pricing');
+  if(packageGrid)packageGrid.innerHTML=skeletonCards(3,'pricing');
+  ['storeHeroTitle','storeHeroText','heroEyebrow','productsTitle','productsText','valueIntro','pricingTitle','pricingText','footerBrandLine'].forEach(id=>{
+    const el=document.getElementById(id);if(el){el.classList.add('server-skeleton-text');el.setAttribute('aria-busy','true');}
+  });
+  const hero=document.querySelector('.store-hero');if(hero)hero.classList.add('server-content-loading');
+  const cta=document.querySelector('.store-hero .actions .btn.primary');if(cta){cta.classList.add('server-skeleton-button');cta.setAttribute('aria-busy','true');}
+}
+function clearStorefrontSkeletons(){
+  document.querySelectorAll('.server-skeleton-text').forEach(el=>{el.classList.remove('server-skeleton-text');el.removeAttribute('aria-busy');});
+  const hero=document.querySelector('.store-hero');if(hero)hero.classList.remove('server-content-loading');
+}
+
 const slugifyClient=v=>String(v||'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
 const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const token=()=>localStorage.getItem('cr_customer_token');
@@ -642,6 +661,7 @@ function buyPage(){
 
 
 async function loadProductStore(){
+  showStorefrontSkeletons();
   const data=await content().catch(()=>({services:[],banners:[],site:{}}));
   const site=data.site||{};
   const put=(id,value)=>{const el=document.getElementById(id);if(el&&value)el.textContent=value;};
@@ -664,6 +684,15 @@ async function loadProductStore(){
     hero.style.setProperty('--hero-banner-darkness',String(Math.max(0,Math.min(.6,Number(banner.overlayOpacity??18)/100))));
     hero.classList.add('has-managed-banner');
   }
+  clearStorefrontSkeletons();
+  const loadedCta=document.querySelector('.store-hero .actions .btn.primary');if(loadedCta){loadedCta.classList.remove('server-skeleton-button');loadedCta.removeAttribute('aria-busy');}
+  if(hero&&banner?.image){
+    hero.classList.add('server-image-loading');
+    const bannerImage=new Image();
+    bannerImage.onload=()=>hero.classList.remove('server-image-loading');
+    bannerImage.onerror=()=>hero.classList.remove('server-image-loading');
+    bannerImage.src=String(banner.image);
+  }else if(hero){hero.classList.remove('server-image-loading');}
   const products=(data.services||[]).filter(x=>x.active!==false);
   const cards=products.map((x,i)=>`<article class="card product-card"><div class="product-card-top"><span class="product-icon">${esc(x.icon||'✦')}</span><span class="tag">${esc(x.category||'SOFTWARE')}</span></div><h3>${esc(x.title)}</h3><p>${esc(x.description||'A focused tool to simplify everyday work.')}</p><ul>${(x.features||[]).slice(0,4).map(f=>`<li>${esc(f)}</li>`).join('')}</ul><div class="product-card-bottom"><span>${x.startingPrice?`From ₹${Number(x.startingPrice).toLocaleString('en-IN')}`:'Explore plans'}</span><a href="/buy">View plans ↗</a></div></article>`).join('');
   const grid=document.getElementById('serviceGrid');if(grid)grid.innerHTML=cards||'<div class="empty">New products are being prepared. Check back soon.</div>';

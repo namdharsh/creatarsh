@@ -57,3 +57,23 @@ th{color:#829099!important}td{color:#34414a!important;border-bottom-color:#edf0f
 .modal{background:rgba(25,32,38,.35)!important}.modal-box{color:#20252b}
 .badge{background:#eef1f2!important;color:#53616b!important}
 @media(max-width:760px){.sidebar.mobile-open{display:block!important;z-index:20;box-shadow:20px 0 60px rgba(0,0,0,.12)}}
+
+
+/* Manager: consistent shimmer skeletons for every server-backed screen */
+.manager-skeleton{display:grid;gap:18px;width:100%}
+.manager-skeleton-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.manager-skeleton-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.manager-skeleton .skeleton-card{background:#fff;border:1px solid #e3e6e7;border-radius:16px;padding:24px;min-width:0;overflow:hidden}
+.manager-skeleton-stats .skeleton-card{min-height:112px}
+.manager-skeleton-columns .skeleton-card{min-height:230px}
+.manager-skeleton .sk-line{display:block;height:12px;border-radius:8px;margin:0 0 14px;background:linear-gradient(100deg,#eef0f1 20%,#e0e4e6 38%,#eef0f1 58%);background-size:220% 100%;animation:creatarsh-manager-shimmer 1.35s ease-in-out infinite}
+.manager-skeleton .sk-kicker{width:34%;height:9px;margin-bottom:23px}
+.manager-skeleton .sk-title{width:65%;height:20px;margin-bottom:20px}
+.manager-skeleton .sk-copy{width:100%}.manager-skeleton .sk-copy.short{width:55%}
+.manager-skeleton-table{margin-top:25px;border-top:1px solid #edf0f1}
+.manager-skeleton-tr{display:grid;grid-template-columns:1.3fr 1fr 1fr .7fr;gap:18px;padding:17px 0;border-bottom:1px solid #edf0f1}
+.manager-skeleton-tr .sk-copy{margin:0;height:11px}
+@keyframes creatarsh-manager-shimmer{0%{background-position:100% 0}100%{background-position:-120% 0}}
+@media(max-width:900px){.manager-skeleton-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){.manager-skeleton-columns{grid-template-columns:1fr}.manager-skeleton-tr{grid-template-columns:1fr 1fr}.manager-skeleton-tr .sk-copy:nth-child(n+3){display:none}}
+@media(prefers-reduced-motion:reduce){.manager-skeleton .sk-line{animation:none;background:#edf0f1}}

@@ -650,3 +650,17 @@ input,textarea,select{background:#fff!important;color:#20252b!important;border-c
 @media(max-width:600px){.store-hero{padding:82px 0 68px!important}.store-hero h1{font-size:43px!important}.store-hero .hero-lead{font-size:15px!important}.section{padding:60px 0!important}.section-head{align-items:flex-start;flex-direction:column}.grid.services,.pricing-grid,.support-grid{grid-template-columns:1fr!important}.store-proof .container{justify-content:center}.nav{height:66px}.nav .links{display:none}.nav-actions .btn{padding:9px 12px!important;font-size:11px!important}}
 
 .store-hero h1{white-space:pre-line}.page-head h1{white-space:pre-line}.store-hero .hero-lead{position:relative;z-index:2}
+
+
+/* Universal server-content skeleton states */
+.skeleton-grid-products,.skeleton-grid-pricing{grid-template-columns:repeat(3,minmax(0,1fr))}
+.skeleton-grid-products .skeleton-card,.skeleton-grid-pricing .skeleton-card{min-height:260px;border-radius:18px;background:#fff;border-color:#e5e7e8}
+.server-skeleton-text{position:relative!important;display:block!important;color:transparent!important;-webkit-text-fill-color:transparent!important;min-height:1.15em!important;max-width:100%;overflow:hidden!important;border-radius:7px!important;background:linear-gradient(100deg,#eef0f1 20%,#e2e6e8 38%,#eef0f1 58%)!important;background-size:220% 100%!important;animation:creatarsh-shimmer 1.35s ease-in-out infinite!important}
+.store-hero h1.server-skeleton-text{min-height:2.15em!important;max-width:760px!important;width:85%;margin:28px auto 22px!important}
+.store-hero .hero-lead.server-skeleton-text{min-height:3.2em!important;max-width:650px!important;margin:0 auto!important}
+.server-skeleton-text:before,.server-skeleton-text:after{color:transparent!important}
+.store-hero.server-image-loading:after{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;background:linear-gradient(105deg,transparent 25%,rgba(222,227,230,.52) 45%,transparent 65%);background-size:220% 100%;animation:creatarsh-shimmer 1.35s ease-in-out infinite}
+@media(max-width:850px){.skeleton-grid-products,.skeleton-grid-pricing{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.skeleton-grid-products,.skeleton-grid-pricing{grid-template-columns:1fr}}
+
+.store-hero .server-skeleton-button{color:transparent!important;pointer-events:none!important;position:relative;overflow:hidden;background:linear-gradient(100deg,#e7eaec 20%,#d9dfe2 38%,#e7eaec 58%)!important;background-size:220% 100%!important;animation:creatarsh-shimmer 1.35s ease-in-out infinite!important;border-color:#e7eaec!important}

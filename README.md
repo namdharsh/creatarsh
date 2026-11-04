@@ -38,3 +38,6 @@ Before production:
 
 ## Validation
 JavaScript syntax checks pass for the customer website, manager interface and Node server. Run the server test suite in your own environment before deployment.
+
+## Skeleton loading
+Server-backed customer storefront content (hero copy, products, plans and managed banner images) and Manager screens use animated skeleton placeholders while requests are in flight. Account dashboard and FAQ areas also retain their skeleton placeholders. Reduced-motion preferences disable the shimmer animation.
