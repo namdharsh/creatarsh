@@ -5,3 +5,34 @@
 
 /* Manager polish: one shared logo with a high-contrast tile and a calmer navigation. */
 .brand{display:flex;align-items:center;gap:10px;padding:0 8px 22px;font-size:13px;letter-spacing:.035em}.brand-mark{display:grid;place-items:center;flex:0 0 42px;width:42px;height:42px;background:#fff;border:1px solid #dce9e0;border-radius:12px;padding:4px}.brand img{width:100%;height:100%;object-fit:contain}.brand small{display:block;color:var(--muted);font:700 9px 'DM Sans',sans-serif;letter-spacing:.13em;margin-top:3px}.nav-details{margin:18px 8px 10px;border-top:1px solid var(--line);padding-top:12px}.nav-details summary{list-style:none;display:flex;justify-content:space-between;align-items:center;cursor:pointer;color:var(--muted);font-size:10px;letter-spacing:.16em;font-weight:800;padding:8px 5px}.nav-details summary::-webkit-details-marker{display:none}.nav-details[open] summary span{transform:rotate(45deg)}.nav-details-items{padding-top:6px}.nav-details .navitem{width:100%;font-size:12px;padding:9px 11px}.sidebar .group{margin-top:13px}.login-logo{display:flex;align-items:center;gap:12px}.login-logo img{width:44px;height:44px;object-fit:contain;background:#fff;border:1px solid #dce9e0;border-radius:12px;padding:4px}.mobile-open{display:block!important;z-index:30}@media(max-width:760px){.sidebar.mobile-open{display:block;position:fixed;inset:0 auto 0 0;width:min(290px,85vw);z-index:25;box-shadow:20px 0 70px rgba(0,0,0,.35)}}
+
+
+
+/* Creatarsh premium light manager workspace */
+:root{--bg:#f6f7f6;--side:#fff;--panel:#fff;--panel2:#f2f3f2;--line:#e3e6e5;--text:#202429;--muted:#78828a;--green:#20252b;--danger:#bd4a4a}
+body{background:var(--bg);color:var(--text)}
+.sidebar{background:#fff;border-color:#e4e6e5}
+.brand{color:#20252b}
+.brand small,.group,.nav-details summary{color:#899198}
+.navitem{color:#626d75}
+.navitem:hover,.navitem.active{background:#eef0f0;color:#20252b}
+.navitem .count{background:#e8ebeb;color:#38434b}
+.main{background:#f7f8f7}
+.top{background:rgba(255,255,255,.9);border-color:#e4e6e5}
+.top h1{color:#20252b}
+.card,.stat,.table-wrap,.modal-box,.login-box{background:#fff;border-color:#e3e6e5;color:#20252b;box-shadow:0 8px 28px rgba(25,30,35,.035)}
+.stat span,.muted,.field label{color:#78828a}
+.eyebrow{color:#74818a}
+.btn{background:#fff;color:#252a2f;border-color:#dce0e0}
+.btn.primary{background:#20252b;color:#fff;border-color:#20252b}
+.btn.danger{color:#a84040;border-color:#ead2d2}
+.badge{background:#eef0f0;color:#4f5a62}
+.field input,.field textarea,.field select{background:#fff;color:#20252b;border-color:#dfe2e2}
+.table-wrap table th{color:#78828a}
+th,td{border-color:#e7e9e8}
+.empty{border-color:#d9dedd;color:#7b858c}
+.modal{background:rgba(20,25,29,.35)}
+.modal-box{box-shadow:0 24px 80px rgba(25,30,35,.18)}
+.login-screen{background:#f6f7f6}
+.login-box h1{color:#20252b}
+@media(max-width:760px){.top{background:rgba(255,255,255,.95)}}

@@ -1,35 +1,29 @@
-const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '.env') });
-const { loadConfig } = require('./config/env');
-const { connectDatabase, isDatabaseReady, disconnectDatabase } = require('./config/database');
-const { logger, requestLogger } = require('./lib/logger');
-const { healthRoutes } = require('./middleware/health');
-const { notFound, errorHandler } = require('./middleware/errors');
+require('dotenv').config();
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const rateLimit = require('express-rate-limit');
-let nodemailer = null; try { nodemailer = require('nodemailer'); } catch (_) {}
 
 const app = express();
-const CONFIG = loadConfig();
-if (!CONFIG.mongoUri) throw new Error('MONGODB_URI must be configured in server/.env before starting Creatarsh.');
-const PORT = CONFIG.port;
+const PORT = Number(process.env.PORT || 5000);
 const ROOT = path.join(__dirname, '..');
 const CUSTOMER_DIR = path.join(ROOT, 'customer');
 const MANAGER_DIR = path.join(ROOT, 'manager');
-const JWT_SECRET = CONFIG.managerJwtSecret;
-const CUSTOMER_JWT_SECRET = CONFIG.customerJwtSecret;
-const IS_PRODUCTION = CONFIG.isProduction;
+const JWT_SECRET = process.env.MANAGER_JWT_SECRET || process.env.JWT_SECRET;
+const CUSTOMER_JWT_SECRET = process.env.CUSTOMER_JWT_SECRET || JWT_SECRET;
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || '';
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || '';
 const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET || '';
 const RAZORPAY_API = 'https://api.razorpay.com/v1';
-const corsOrigins = CONFIG.corsOrigins;
+if (IS_PRODUCTION && (!JWT_SECRET || !CUSTOMER_JWT_SECRET)) {
+  throw new Error('MANAGER_JWT_SECRET and CUSTOMER_JWT_SECRET must be configured in production.');
+}
+const corsOrigins = String(process.env.CORS_ORIGINS || '').split(',').map(v => v.trim()).filter(Boolean);
 
 app.disable('x-powered-by');
 // Render/reverse-proxy aware: preserve the real client IP for rate limiting.
@@ -41,10 +35,8 @@ app.use(cors({ origin(origin, callback) {
   if (!origin || corsOrigins.length === 0 || corsOrigins.includes(origin) || origin.endsWith('.vercel.app') || origin.endsWith('.pages.dev') || origin.endsWith('.github.io')) return callback(null, true);
   return callback(new Error('CORS origin not allowed'));
 }, credentials: false }));
-app.use(express.json({ limit: '1mb', verify: (req, res, buf) => { if (req.originalUrl === '/api/webhooks/razorpay') req.rawBody = Buffer.from(buf); } }));
+app.use(express.json({ limit: '8mb', verify: (req, res, buf) => { if (req.originalUrl === '/api/webhooks/razorpay') req.rawBody = Buffer.from(buf); } }));
 app.use(express.urlencoded({ extended: true, limit: '8mb' }));
-app.use(requestLogger);
-healthRoutes(app, { isDatabaseReady });
 
 // Serve the customer website and manager assets from the same Express service.
 // This keeps CSS/JS/images available when the API and web app are deployed together.
@@ -62,9 +54,6 @@ app.get('/', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'index.html')));
 app.get('/login', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'login.html')));
 app.get('/register', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'register.html')));
 app.get('/account', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'account.html')));
-app.get('/forgot-password',(req,res)=>res.sendFile(path.join(CUSTOMER_DIR,'forgot-password.html')));
-app.get('/reset-password',(req,res)=>res.sendFile(path.join(CUSTOMER_DIR,'reset-password.html')));
-app.get('/verify-email',(req,res)=>res.sendFile(path.join(CUSTOMER_DIR,'verify-email.html')));
 app.get('/services', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'services.html')));
 // Service detail pages: support direct navigation, refreshes and the plural alias.
 app.get('/service', (req, res) => res.redirect('/services'));
@@ -78,9 +67,6 @@ app.get('/support', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'support.
 app.get('/grievance', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'grievance.html')));
 app.get('/faq', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'faq.html')));
 app.get('/buy', (req,res)=>res.sendFile(path.join(CUSTOMER_DIR,'buy.html')));
-app.get('/products', (req,res)=>res.sendFile(path.join(CUSTOMER_DIR,'products.html')));
-app.get('/products/:slug', (req,res)=>res.sendFile(path.join(CUSTOMER_DIR,'product.html')));
-app.get('/manager/saas-catalogue', (req,res)=>res.sendFile(path.join(MANAGER_DIR,'saas-catalogue.html')));
 app.get('/packages', (req,res)=>res.redirect('/buy'));
 app.get('/packages/:code', (req,res)=>res.redirect('/buy?package='+encodeURIComponent(req.params.code)));
 app.get('/start-project', (req,res)=>res.redirect('/buy'));
@@ -116,21 +102,12 @@ const siteSchema = new mongoose.Schema({ key: { type: String, unique: true, defa
 const managerSchema = new mongoose.Schema({ username: { type: String, unique: true, lowercase: true, trim: true }, passwordHash: String, role: { type: String, default: 'manager' }, active: { type: Boolean, default: true }, lastLoginAt: Date }, { timestamps: true });
 const contractTemplateSchema = new mongoose.Schema({ code:{type:String,unique:true,index:true}, name:{type:String,required:true}, category:String, priceLabel:String, description:String, scope:String, milestones:String, timeline:String, deliverables:[String], ip:String, support:String, acceptance:String, termination:String, active:{type:Boolean,default:true} },{timestamps:true});
 const contractSchema = new mongoose.Schema({ contractId:{type:String,unique:true,index:true}, template:{type:mongoose.Schema.Types.ObjectId,ref:'ContractTemplate'}, customer:{type:mongoose.Schema.Types.ObjectId,ref:'Customer'}, project:{type:mongoose.Schema.Types.ObjectId,ref:'Project'}, title:String, customerDetails:{name:String,email:String,phone:String,company:String,address:String}, scope:String, price:Number, priceLabel:String, milestones:String, timeline:String, deliverables:[String], ip:String, support:String, acceptance:String, termination:String, status:{type:String,enum:['DRAFT','SENT','ACCEPTED','REJECTED','TERMINATED'],default:'DRAFT'}, acceptedAt:Date, acceptedIp:String },{timestamps:true});
-const customerSchema = new mongoose.Schema({ name: { type: String, required: true, trim: true, maxlength: 100 }, email: { type: String, required: true, unique: true, lowercase: true, trim: true }, emailVerifiedAt: Date, phone: String, phoneVerifiedAt: Date, company: String, passwordHash: { type: String, required: true }, active: { type: Boolean, default: true }, lastLoginAt: Date, passwordChangedAt: Date }, { timestamps: true });
-const customerSessionSchema = new mongoose.Schema({ customer:{type:mongoose.Schema.Types.ObjectId,ref:'Customer',required:true,index:true}, sidHash:{type:String,required:true,unique:true}, userAgent:{type:String,maxlength:300}, ip:String, expiresAt:{type:Date,required:true}, revokedAt:Date, lastSeenAt:Date },{timestamps:true});
-customerSessionSchema.index({expiresAt:1},{expireAfterSeconds:0});
-const customerTokenSchema = new mongoose.Schema({ customer:{type:mongoose.Schema.Types.ObjectId,ref:'Customer',required:true,index:true}, tokenHash:{type:String,required:true,index:true}, purpose:{type:String,enum:['VERIFY_EMAIL','RESET_PASSWORD','VERIFY_PHONE'],required:true}, expiresAt:{type:Date,required:true}, usedAt:Date },{timestamps:true});
-customerTokenSchema.index({expiresAt:1},{expireAfterSeconds:0});
-const saasSubscriptionSchema = new mongoose.Schema({customer:{type:mongoose.Schema.Types.ObjectId,ref:'Customer',required:true,index:true},product:{type:mongoose.Schema.Types.ObjectId,ref:'SaaSProduct',required:true},planCode:{type:String,required:true},status:{type:String,enum:['TRIALING','ACTIVE','PAST_DUE','CANCELLED','SUSPENDED','EXPIRED'],default:'TRIALING',index:true},currentPeriodEnd:Date,trialEndsAt:Date,provider:String,providerSubscriptionId:String},{timestamps:true});
+const customerSchema = new mongoose.Schema({ name: { type: String, required: true, trim: true }, email: { type: String, required: true, unique: true, lowercase: true, trim: true }, phone: String, company: String, passwordHash: { type: String, required: true }, active: { type: Boolean, default: true }, lastLoginAt: Date }, { timestamps: true });
 const leadSchema = new mongoose.Schema({ enquiryId: { type: String, unique: true, index: true }, name: String, company: String, email: String, whatsapp: String, projectType: String, budget: String, deadline: String, referenceUrl: String, requirements: String, status: { type: String, default: 'NEW' }, workflowStage: { type: String, enum: ['NEW LEAD','QUALIFIED','QUOTE','PROPOSAL','ACCEPTED','CONTRACT','PAYMENT','PROJECT','DELIVERY','APPROVAL','COMPLETED','MAINTENANCE'], default: 'NEW LEAD' }, notes: String, customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' } }, { timestamps: true });
 const projectSchema = new mongoose.Schema({ projectId: { type: String, unique: true, index: true }, customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' }, lead: { type: mongoose.Schema.Types.ObjectId, ref: 'Lead' }, name: String, description: String, status: { type: String, default: 'PLANNING' }, progress: { type: Number, default: 0, min: 0, max: 100 }, value: { type: Number, default: 0 }, startDate: Date, dueDate: Date, notes: String }, { timestamps: true });
 const quoteSchema = new mongoose.Schema({ quoteId: { type: String, unique: true, index: true }, customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' }, project: { type: mongoose.Schema.Types.ObjectId, ref: 'Project' }, items: [{ name: String, quantity: { type: Number, default: 1 }, price: { type: Number, default: 0 } }], discount: { type: Number, default: 0 }, gst: { type: Number, default: 18 }, subtotal: Number, total: Number, status: { type: String, default: 'DRAFT' }, validUntil: Date, notes: String }, { timestamps: true });
 const invoiceSchema = new mongoose.Schema({ invoiceId: { type: String, unique: true, index: true }, invoiceDate: { type: Date, default: Date.now }, customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' }, project: { type: mongoose.Schema.Types.ObjectId, ref: 'Project' }, businessDetails: { legalName: String, tradeName: String, gstin: String, address: String, email: String, phone: String }, customerBilling: { name: String, company: String, email: String, phone: String, address: String, gstin: String }, items: [{ name: String, description: String, quantity: { type: Number, default: 1 }, rate: { type: Number, default: 0 }, price: { type: Number, default: 0 }, taxRate: { type: Number, default: 0 } }], subtotal: Number, discount: { type: Number, default: 0 }, gst: { type: Number, default: 18 }, taxAmount: { type: Number, default: 0 }, total: Number, status: { type: String, enum: ['DRAFT','UNPAID','PARTIALLY_PAID','PAID','OVERDUE','CANCELLED','REFUNDED'], default: 'UNPAID' }, paymentMethod: String, transactionReference: String, dueDate: Date, paymentTerms: String, notes: String }, { timestamps: true });
 const servicePackageSchema = new mongoose.Schema({ code: { type: String, unique: true, index: true }, name: { type: String, required: true }, price: { type: Number, required: true }, bookingAmount: { type: Number, default: 499 }, description: String, features: [String], category: String, active: { type: Boolean, default: true }, order: { type: Number, default: 0 }, billingType: { type: String, default: 'ONE_TIME' }, startingAt: { type: Boolean, default: false } }, { timestamps: true });
-// SaaS storefront catalogue is deliberately separate from legacy agency ServicePackage records.
-const saasPlanSchema = new mongoose.Schema({ code:{type:String,required:true,trim:true}, tier:{type:String,enum:['BASIC','MEDIUM','PREMIUM'],required:true}, name:{type:String,required:true,trim:true}, description:String, amount:{type:Number,min:0,required:true}, currency:{type:String,default:'INR',match:/^[A-Z]{3}$/}, interval:{type:String,enum:['MONTH','YEAR'],default:'MONTH'}, trialDays:{type:Number,min:0,max:30,default:3}, features:[String], active:{type:Boolean,default:true}, highlight:{type:Boolean,default:false}, order:{type:Number,default:0} },{_id:true});
-const saasProductSchema = new mongoose.Schema({ code:{type:String,required:true,unique:true,index:true,trim:true,uppercase:true}, slug:{type:String,required:true,unique:true,index:true,trim:true,lowercase:true}, name:{type:String,required:true,trim:true}, shortDescription:{type:String,trim:true,maxlength:180}, description:{type:String,trim:true}, valueProposition:String, audience:String, icon:{type:String,default:'✦'}, category:String, status:{type:String,enum:['DRAFT','ACTIVE','ARCHIVED'],default:'DRAFT',index:true}, currency:{type:String,default:'INR',match:/^[A-Z]{3}$/}, plans:{type:[saasPlanSchema],default:[]}, faqs:[{question:String,answer:String}], seo:{title:String,description:String}, order:{type:Number,default:0} },{timestamps:true});
-saasProductSchema.index({status:1,order:1,updatedAt:-1});
 const paymentSchema = new mongoose.Schema({ transactionId: { type: String, index: true }, customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' }, project: { type: mongoose.Schema.Types.ObjectId, ref: 'Project' }, invoice: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' }, amount: { type: Number, required: true }, gateway: String, status: { type: String, default: 'SUCCESS' }, paidAt: Date, note: String }, { timestamps: true });
 const notificationSchema = new mongoose.Schema({ recipientType: { type: String, enum: ['customer', 'manager'] }, recipient: mongoose.Schema.Types.ObjectId, title: String, message: String, read: { type: Boolean, default: false }, link: String }, { timestamps: true });
 const ticketSchema = new mongoose.Schema({ ticketId:{type:String,unique:true,index:true}, customer:{type:mongoose.Schema.Types.ObjectId,ref:'Customer'}, subject:{type:String,required:true,trim:true}, category:{type:String,default:'GENERAL'}, priority:{type:String,default:'NORMAL'}, message:{type:String,required:true}, status:{type:String,default:'OPEN'}, messages:[{senderType:String,sender:mongoose.Schema.Types.ObjectId,message:String,createdAt:{type:Date,default:Date.now}}] },{timestamps:true});
@@ -143,8 +120,7 @@ const counterSchema = new mongoose.Schema({ key:{type:String,unique:true}, value
 
 const Service = mongoose.model('Service', serviceSchema); const Portfolio = mongoose.model('Portfolio', portfolioSchema);
 const Testimonial = mongoose.model('Testimonial', testimonialSchema); const FAQ = mongoose.model('FAQ', faqSchema); const Banner = mongoose.model('Banner', bannerSchema);
-const CustomerSession = mongoose.model('CustomerSession', customerSessionSchema); const CustomerToken = mongoose.model('CustomerToken', customerTokenSchema); const SaaSSubscription = mongoose.model('SaaSSubscription', saasSubscriptionSchema);
-const Site = mongoose.model('Site', siteSchema); const ServicePackage = mongoose.model('ServicePackage', servicePackageSchema); const Manager = mongoose.model('Manager', managerSchema); const Customer = mongoose.model('Customer', customerSchema); const SaaSProduct = mongoose.model('SaaSProduct', saasProductSchema);
+const Site = mongoose.model('Site', siteSchema); const ServicePackage = mongoose.model('ServicePackage', servicePackageSchema); const Manager = mongoose.model('Manager', managerSchema); const Customer = mongoose.model('Customer', customerSchema);
 const Counter = mongoose.model('Counter', counterSchema); const Lead = mongoose.model('Lead', leadSchema); const ContractTemplate = mongoose.model('ContractTemplate', contractTemplateSchema); const Contract = mongoose.model('Contract', contractSchema); const Project = mongoose.model('Project', projectSchema); const Quote = mongoose.model('Quote', quoteSchema); const Invoice = mongoose.model('Invoice', invoiceSchema); const Payment = mongoose.model('Payment', paymentSchema); const Notification = mongoose.model('Notification', notificationSchema); const Ticket = mongoose.model('Ticket', ticketSchema); const Consent = mongoose.model('Consent', consentSchema); const PrivacyRequest = mongoose.model('PrivacyRequest', privacyRequestSchema); const Order = mongoose.model('Order', orderSchema); const Approval = mongoose.model('Approval', approvalSchema); const Document = mongoose.model('Document', documentSchema);
 
 let dbReady = false;
@@ -162,18 +138,10 @@ function id(prefix) { return `${prefix}-${Date.now().toString(36).toUpperCase()}
 async function ticketId(){const c=await Counter.findOneAndUpdate({key:'support-ticket'},{$inc:{value:1}},{upsert:true,new:true,setDefaultsOnInsert:true});return `CR-TKT-${String(c.value).padStart(4,'0')}`;}
 function tokenFrom(req) { const h = req.headers.authorization || ''; return h.startsWith('Bearer ') ? h.slice(7).trim() : null; }
 function signManager(m) { return jwt.sign({ sub: String(m._id), username: m.username, role: m.role || 'manager', type: 'manager' }, JWT_SECRET, { expiresIn: process.env.MANAGER_JWT_EXPIRES || '90d' }); }
-function signCustomer(c, sid) { return jwt.sign({ sub: String(c._id), sid, type: 'customer' }, CUSTOMER_JWT_SECRET, { expiresIn: process.env.CUSTOMER_JWT_EXPIRES || '30d' }); }
-const sha256 = value => crypto.createHash('sha256').update(String(value)).digest('hex');
-const authLimiter = rateLimit({windowMs:15*60*1000,limit:8,standardHeaders:true,legacyHeaders:false,message:{message:'Too many attempts. Please try again in 15 minutes.'}});
-const resetLimiter = rateLimit({windowMs:60*60*1000,limit:5,standardHeaders:true,legacyHeaders:false,message:{message:'Too many requests. Please try again later.'}});
-function validEmail(v){return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)&&v.length<=254;}
-function passwordValid(v){return typeof v==='string'&&v.length>=10&&v.length<=128;}
-async function sendCustomerEmail(to,subject,text){if(!process.env.SMTP_HOST||!nodemailer) return false; const transporter=nodemailer.createTransport({host:process.env.SMTP_HOST,port:Number(process.env.SMTP_PORT||587),secure:String(process.env.SMTP_SECURE||'false')==='true',auth:process.env.SMTP_USER?{user:process.env.SMTP_USER,pass:process.env.SMTP_PASS}:undefined}); await transporter.sendMail({from:process.env.SMTP_FROM||process.env.SMTP_USER,to,subject,text}); return true;}
-async function createCustomerSession(c,req){const sid=crypto.randomBytes(32).toString('hex');const days=Math.max(1,Math.min(90,Number(process.env.CUSTOMER_SESSION_DAYS||30)));const expiresAt=new Date(Date.now()+days*86400000);await CustomerSession.create({customer:c._id,sidHash:sha256(sid),userAgent:String(req.get('user-agent')||'').slice(0,300),ip:req.ip,expiresAt,lastSeenAt:new Date()});return {token:signCustomer(c,sid),expiresAt};}
-function publicCustomer(c){return {id:String(c._id),name:c.name,email:c.email,phone:c.phone||'',company:c.company||'',emailVerified:!!c.emailVerifiedAt,phoneVerified:!!c.phoneVerifiedAt};}
+function signCustomer(c) { return jwt.sign({ sub: String(c._id), email: c.email, type: 'customer' }, CUSTOMER_JWT_SECRET, { expiresIn: process.env.CUSTOMER_JWT_EXPIRES || '90d' }); }
 function verifyToken(req, type) { const token = tokenFrom(req); if (!token) throw new Error('NO_TOKEN'); const secret = type === 'manager' ? JWT_SECRET : CUSTOMER_JWT_SECRET; const payload = jwt.verify(token, secret); if (payload.type !== type) throw new Error('WRONG_TYPE'); return payload; }
 async function requireManager(req, res, next) { try { req.auth = verifyToken(req, 'manager'); next(); } catch (e) { res.status(401).json({ message: 'Manager session expired. Please sign in again.', code: 'AUTH_REQUIRED' }); } }
-async function requireCustomer(req, res, next) { try { req.auth = verifyToken(req, 'customer'); if(!req.auth.sid||!dbReady) throw new Error('SESSION_REQUIRED'); const [c,session]=await Promise.all([Customer.findById(req.auth.sub).select('_id active'),CustomerSession.findOne({customer:req.auth.sub,sidHash:sha256(req.auth.sid),revokedAt:null,expiresAt:{$gt:new Date()}})]); if(!c||!c.active||!session) throw new Error('CUSTOMER_DISABLED'); req.customerSession=session; session.lastSeenAt=new Date(); session.save().catch(()=>{}); next(); } catch (e) { res.status(401).json({ message: 'Customer session expired. Please sign in again.', code: 'AUTH_REQUIRED' }); } }
+async function requireCustomer(req, res, next) { try { req.auth = verifyToken(req, 'customer'); if (dbReady) { const c = await Customer.findById(req.auth.sub).select('_id active'); if (!c || !c.active) throw new Error('CUSTOMER_DISABLED'); } next(); } catch (e) { res.status(401).json({ message: 'Customer session expired. Please sign in again.', code: 'AUTH_REQUIRED' }); } }
 function finiteNumber(v, fallback = 0) { const n = Number(v); return Number.isFinite(n) ? n : fallback; }
 function validItems(items) { return Array.isArray(items) && items.length > 0 && items.every(x => String(x?.name || '').trim() && finiteNumber(x.quantity, 1) > 0 && finiteNumber(x.price, 0) >= 0); }
 function calc(items = [], discount = 0, gst = 18) { const subtotal = items.reduce((s, x) => s + finiteNumber(x.quantity, 1) * finiteNumber(x.price, 0), 0); const safeDiscount = Math.min(Math.max(0, finiteNumber(discount, 0)), subtotal); const safeGst = Math.min(Math.max(0, finiteNumber(gst, 18)), 100); const afterDiscount = Math.max(0, subtotal - safeDiscount); return { subtotal: Math.round(subtotal * 100) / 100, total: Math.round(afterDiscount * (1 + safeGst / 100) * 100) / 100 }; }
@@ -218,42 +186,6 @@ app.get('/api/health', (req, res) => res.json({ ok: true, database: dbReady, ser
 app.get('/api/public/payment-config', (req,res)=>res.json({provider:'razorpay',enabled:Boolean(RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET),keyId:RAZORPAY_KEY_ID||null,currency:'INR'}));
 
 app.get('/api/public/pricing', async (req,res) => { if (!dbReady) return res.status(503).json({message:'Pricing is temporarily unavailable because the database is not connected.'}); try { const packages=await ServicePackage.find({active:true}).sort({order:1}); res.json({version:'2026-10',currency:'INR',packages}); } catch(e){ res.status(503).json({message:'Pricing is temporarily unavailable.'}); } });
-// SaaS storefront catalogue: all product and plan content comes from MongoDB manager records.
-app.get('/api/public/products', async (req, res) => {
-  if (!dbReady) return res.status(503).json({ message: 'Product catalogue is temporarily unavailable because the database is not connected.' });
-  try {
-    const products = await SaaSProduct.find({ status: 'ACTIVE' })
-      .select('code slug name shortDescription description valueProposition audience icon category currency plans order')
-      .sort({ order: 1, updatedAt: -1 })
-      .lean();
-    const publicProducts = products.map(product => ({
-      ...product,
-      plans: (product.plans || []).filter(plan => plan.active !== false).sort((a, b) => (a.order || 0) - (b.order || 0))
-    }));
-    res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
-    res.json({ products: publicProducts });
-  } catch (e) {
-    console.error('Public product catalogue failed:', e.message);
-    res.status(503).json({ message: 'Product catalogue is temporarily unavailable.' });
-  }
-});
-app.get('/api/public/products/:slug', async (req, res) => {
-  if (!dbReady) return res.status(503).json({ message: 'Product details are temporarily unavailable because the database is not connected.' });
-  try {
-    const slug = String(req.params.slug || '').trim().toLowerCase();
-    const product = await SaaSProduct.findOne({ slug, status: 'ACTIVE' })
-      .select('code slug name shortDescription description valueProposition audience icon category currency plans faqs seo')
-      .lean();
-    if (!product) return res.status(404).json({ message: 'Product not found.' });
-    product.plans = (product.plans || []).filter(plan => plan.active !== false).sort((a, b) => (a.order || 0) - (b.order || 0));
-    res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
-    res.json({ product });
-  } catch (e) {
-    console.error('Public product detail failed:', e.message);
-    res.status(503).json({ message: 'Product details are temporarily unavailable.' });
-  }
-});
-
 
 app.post('/api/public/orders', async (req,res) => res.status(410).json({message:'Please sign in and use the package booking flow.'}));
 app.post('/api/customer/bookings', requireCustomer, async (req,res) => {
@@ -300,7 +232,6 @@ app.get('/api/public/portfolio/:slug', async (req, res) => {
 });
 
 app.get('/api/public/content', async (req, res) => {
-  if (!dbReady) return res.status(503).json({ message: 'Website content is temporarily unavailable because the database is not connected.' });
   try {
     const [services, portfolio, testimonials, faqs, banners, site] = await Promise.all([
       Service.find({ active: true }).sort({ order: 1, createdAt: -1 }), Portfolio.find({ active: true }).sort({ order: 1, createdAt: -1 }),
@@ -342,33 +273,19 @@ app.post('/api/manager/change-password', requireManager, async (req, res) => {
   const current = String(req.body.currentPassword || ''), next = String(req.body.newPassword || ''); if (next.length < 8) return res.status(400).json({ message: 'New password must be at least 8 characters.' });
   const m = await Manager.findById(req.auth.sub); if (!m || !(await bcrypt.compare(current, m.passwordHash))) return res.status(401).json({ message: 'Current password is incorrect.' }); m.passwordHash = await bcrypt.hash(next, 12); await m.save(); res.json({ message: 'Password updated.' });
 });
-app.post('/api/customer/register', authLimiter, async (req,res)=>{
-  if(!dbReady)return res.status(503).json({message:'Registration is temporarily unavailable.'});
-  const name=String(req.body.name||'').trim(),email=String(req.body.email||'').trim().toLowerCase(),password=req.body.password,phone=String(req.body.phone||'').trim(),company=String(req.body.company||'').trim();
-  if(name.length<2||name.length>100||!validEmail(email)||!passwordValid(password)||phone.length>25||company.length>120||(String(process.env.CUSTOMER_PHONE_VERIFICATION_REQUIRED||'false')==='true'&&phone.length<8))return res.status(400).json({message:'Enter a valid name, email and phone. Password must be 10–128 characters.'});
-  try{const existing=await Customer.findOne({email});if(existing)return res.status(409).json({message:'An account with this email already exists.'});const c=await Customer.create({name,email,phone,company,passwordHash:await bcrypt.hash(password,12)});let verificationRequired=String(process.env.CUSTOMER_EMAIL_VERIFICATION_REQUIRED||'false')==='true';let verificationSent=false;if(verificationRequired){const raw=crypto.randomBytes(32).toString('hex');await CustomerToken.create({customer:c._id,tokenHash:sha256(raw),purpose:'VERIFY_EMAIL',expiresAt:new Date(Date.now()+24*3600000)});const url=(process.env.PUBLIC_APP_URL||'https://creatarsh.in')+'/verify-email?token='+raw;try{verificationSent=await sendCustomerEmail(email,'Verify your Creatarsh email',`Verify your email within 24 hours: ${url}`);}catch(e){console.error('Verification email delivery failed:',e.message);} }
-    if(verificationRequired)return res.status(201).json({message:verificationSent?'Account created. Check your email to verify the address before signing in.':'Account created. Email verification is required; email delivery is not configured. Contact support to complete verification.',verificationRequired:true,authenticated:false});
-    const session=await createCustomerSession(c,req);c.lastLoginAt=new Date();await c.save();res.status(201).json({token:session.token,expiresAt:session.expiresAt,customer:publicCustomer(c),verificationRequired,authenticated:true});
-  }catch(e){console.error('Customer registration failed:',e.message);res.status(400).json({message:'Could not create customer account.'});}
+app.post('/api/customer/register', async (req, res) => {
+  if (!dbReady) return res.status(503).json({ message: 'Customer registration is temporarily unavailable.' });
+  const name = String(req.body.name || '').trim(), email = String(req.body.email || '').trim().toLowerCase(), password = String(req.body.password || '');
+  if (!name || !email || password.length < 8) return res.status(400).json({ message: 'Name, valid email and a password of at least 8 characters are required.' });
+  try { if (await Customer.findOne({ email })) return res.status(409).json({ message: 'An account with this email already exists.' }); const c = await Customer.create({ name, email, phone: req.body.phone, company: req.body.company, passwordHash: await bcrypt.hash(password, 12), lastLoginAt: new Date() }); const authToken=signCustomer(c); res.status(201).json({ token: authToken, accessToken: authToken, customer: { id: c._id, name: c.name, email: c.email, phone: c.phone, company: c.company }, user: { id: c._id, name: c.name, email: c.email, phone: c.phone, company: c.company } }); } catch (e) { res.status(400).json({ message: 'Could not create customer account.' }); }
 });
-app.post('/api/customer/login',authLimiter,async(req,res)=>{
-  if(!dbReady)return res.status(503).json({message:'Login is temporarily unavailable.'});const email=String(req.body.email||'').trim().toLowerCase(),password=String(req.body.password||'');
-  try{const c=await Customer.findOne({email,active:true});if(!c||!(await bcrypt.compare(password,c.passwordHash)))return res.status(401).json({message:'Invalid email or password.'});if(String(process.env.CUSTOMER_EMAIL_VERIFICATION_REQUIRED||'false')==='true'&&!c.emailVerifiedAt)return res.status(403).json({message:'Please verify your email before signing in.',code:'EMAIL_VERIFICATION_REQUIRED'});if(String(process.env.CUSTOMER_PHONE_VERIFICATION_REQUIRED||'false')==='true'&&!c.phoneVerifiedAt)return res.status(403).json({message:'Please verify your phone number before signing in.',code:'PHONE_VERIFICATION_REQUIRED'});const session=await createCustomerSession(c,req);c.lastLoginAt=new Date();await c.save();res.json({token:session.token,expiresAt:session.expiresAt,customer:publicCustomer(c)});}catch(e){res.status(500).json({message:'Customer login failed.'});}
+app.post('/api/customer/login', async (req, res) => {
+  if (!dbReady) return res.status(503).json({ message: 'Customer login is temporarily unavailable. Please try again shortly.' });
+  const email = String(req.body.email || '').trim().toLowerCase(), password = String(req.body.password || '');
+  try { const c = await Customer.findOne({ email, active: true }); if (!c || !(await bcrypt.compare(password, c.passwordHash))) return res.status(401).json({ message: 'Invalid email or password.' }); c.lastLoginAt = new Date(); await c.save(); const authToken=signCustomer(c); res.json({ token: authToken, accessToken: authToken, customer: { id: c._id, name: c.name, email: c.email, phone: c.phone, company: c.company }, user: { id: c._id, name: c.name, email: c.email, phone: c.phone, company: c.company } }); } catch (e) { res.status(500).json({ message: 'Customer login failed.' }); }
 });
-app.post('/api/customer/verify-email',authLimiter,async(req,res)=>{const raw=String(req.body.token||'');if(!/^[a-f0-9]{64}$/.test(raw))return res.status(400).json({message:'Invalid or expired verification link.'});const record=await CustomerToken.findOneAndUpdate({tokenHash:sha256(raw),purpose:'VERIFY_EMAIL',usedAt:null,expiresAt:{$gt:new Date()}},{$set:{usedAt:new Date()}},{new:true});if(!record)return res.status(400).json({message:'Invalid or expired verification link.'});await Customer.updateOne({_id:record.customer},{$set:{emailVerifiedAt:new Date()}});res.json({ok:true,message:'Email verified. You can now sign in.'});});
-app.post('/api/customer/verification/resend',resetLimiter,async(req,res)=>{const email=String(req.body.email||'').trim().toLowerCase();const c=await Customer.findOne({email,active:true});if(c&&!c.emailVerifiedAt){const raw=crypto.randomBytes(32).toString('hex');await CustomerToken.create({customer:c._id,tokenHash:sha256(raw),purpose:'VERIFY_EMAIL',expiresAt:new Date(Date.now()+86400000)});const url=(process.env.PUBLIC_APP_URL||'https://creatarsh.in')+'/verify-email?token='+raw;try{await sendCustomerEmail(email,'Verify your Creatarsh email',`Verify your email within 24 hours: ${url}`);}catch(e){console.error('Verification resend failed:',e.message);}}res.json({message:'If the account exists and needs verification, instructions will be sent.'});});
-app.post('/api/customer/phone/send-code',requireCustomer,resetLimiter,async(req,res)=>{if(String(process.env.CUSTOMER_PHONE_VERIFICATION_REQUIRED||'false')!=='true')return res.status(400).json({message:'Phone verification is not enabled.'});if(!process.env.SMS_WEBHOOK_URL||!process.env.SMS_WEBHOOK_TOKEN)return res.status(503).json({message:'Phone verification delivery is not configured.'});const c=await Customer.findById(req.auth.sub);if(!c||!c.phone||c.phone.length<8)return res.status(400).json({message:'Add a valid phone number to your profile first.'});const code=String(crypto.randomInt(100000,1000000));await CustomerToken.deleteMany({customer:c._id,purpose:'VERIFY_PHONE',usedAt:null});await CustomerToken.create({customer:c._id,tokenHash:sha256(code),purpose:'VERIFY_PHONE',expiresAt:new Date(Date.now()+10*60000)});try{const response=await fetch(process.env.SMS_WEBHOOK_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+process.env.SMS_WEBHOOK_TOKEN},body:JSON.stringify({to:c.phone,message:`Your Creatarsh verification code is ${code}. It expires in 10 minutes.`})});if(!response.ok)throw new Error('SMS provider rejected the request');res.json({message:'Verification code sent.'});}catch(e){await CustomerToken.deleteMany({customer:c._id,purpose:'VERIFY_PHONE',tokenHash:sha256(code)});console.error('SMS delivery failed:',e.message);res.status(503).json({message:'Could not send a verification code. Try again later.'});}});
-app.post('/api/customer/phone/verify',requireCustomer,authLimiter,async(req,res)=>{const code=String(req.body.code||'');if(!/^\d{6}$/.test(code))return res.status(400).json({message:'Enter the 6-digit code.'});const record=await CustomerToken.findOneAndUpdate({customer:req.auth.sub,tokenHash:sha256(code),purpose:'VERIFY_PHONE',usedAt:null,expiresAt:{$gt:new Date()}},{$set:{usedAt:new Date()}},{new:true});if(!record)return res.status(400).json({message:'Invalid or expired verification code.'});await Customer.updateOne({_id:req.auth.sub},{$set:{phoneVerifiedAt:new Date()}});res.json({ok:true,message:'Phone number verified.'});});
-app.post('/api/customer/password/forgot',resetLimiter,async(req,res)=>{const email=String(req.body.email||'').trim().toLowerCase();const c=await Customer.findOne({email,active:true});if(c){const raw=crypto.randomBytes(32).toString('hex');await CustomerToken.create({customer:c._id,tokenHash:sha256(raw),purpose:'RESET_PASSWORD',expiresAt:new Date(Date.now()+3600000)});const url=(process.env.PUBLIC_APP_URL||'https://creatarsh.in')+'/reset-password?token='+raw;try{await sendCustomerEmail(email,'Reset your Creatarsh password',`Reset your password within one hour: ${url}`);}catch(e){console.error('Password reset email delivery failed:',e.message);}}res.json({message:'If an active account exists for that email, password reset instructions will be sent.'});});
-app.post('/api/customer/password/reset',authLimiter,async(req,res)=>{const raw=String(req.body.token||''),password=req.body.password;if(!/^[a-f0-9]{64}$/.test(raw)||!passwordValid(password))return res.status(400).json({message:'Invalid reset link or password. Use 10–128 characters.'});const record=await CustomerToken.findOneAndUpdate({tokenHash:sha256(raw),purpose:'RESET_PASSWORD',usedAt:null,expiresAt:{$gt:new Date()}},{$set:{usedAt:new Date()}},{new:true});if(!record)return res.status(400).json({message:'Invalid or expired reset link.'});const hash=await bcrypt.hash(password,12);await Customer.updateOne({_id:record.customer},{$set:{passwordHash:hash,passwordChangedAt:new Date()}});await CustomerSession.updateMany({customer:record.customer,revokedAt:null},{$set:{revokedAt:new Date()}});res.json({ok:true,message:'Password updated. Please sign in again.'});});
-app.get('/api/customer/sessions',requireCustomer,async(req,res)=>{const sessions=await CustomerSession.find({customer:req.auth.sub,revokedAt:null,expiresAt:{$gt:new Date()}}).sort({createdAt:-1}).select('userAgent ip createdAt lastSeenAt expiresAt').lean();res.json({sessions:sessions.map(x=>({...x,current:String(req.customerSession._id)===String(x._id)}))});});
-app.delete('/api/customer/sessions/:id',requireCustomer,async(req,res)=>{if(!mongoose.isValidObjectId(req.params.id))return res.status(400).json({message:'Invalid session id.'});await CustomerSession.updateOne({_id:req.params.id,customer:req.auth.sub,revokedAt:null},{$set:{revokedAt:new Date()}});res.json({ok:true});});
-app.post('/api/customer/logout',requireCustomer,async(req,res)=>{await CustomerSession.updateOne({_id:req.customerSession._id,customer:req.auth.sub},{$set:{revokedAt:new Date()}});res.json({ok:true});});
-app.post('/api/customer/logout-all',requireCustomer,async(req,res)=>{await CustomerSession.updateMany({customer:req.auth.sub,revokedAt:null},{$set:{revokedAt:new Date()}});res.json({ok:true,message:'All sessions have been signed out.'});});
-app.get('/api/customer/me', requireCustomer, async (req,res)=>{const c=await Customer.findById(req.auth.sub);if(!c)return res.status(404).json({message:'Customer not found.'});res.json({customer:publicCustomer(c)});});
-app.put('/api/customer/me', requireCustomer, async (req,res)=>{const name=String(req.body.name||'').trim(),phone=String(req.body.phone||'').trim(),company=String(req.body.company||'').trim();if(name.length<2||name.length>100||phone.length>25||company.length>120)return res.status(400).json({message:'Please check your account details.'});const c=await Customer.findById(req.auth.sub);if(!c)return res.status(404).json({message:'Customer account not found.'});if(phone!==String(c.phone||''))c.phoneVerifiedAt=null;c.name=name;c.phone=phone;c.company=company;await c.save();res.json({customer:publicCustomer(c)});});
-app.post('/api/customer/password/change',requireCustomer,authLimiter,async(req,res)=>{const current=String(req.body.currentPassword||''),next=req.body.newPassword;if(!passwordValid(next))return res.status(400).json({message:'New password must be 10–128 characters.'});const c=await Customer.findById(req.auth.sub);if(!c||!(await bcrypt.compare(current,c.passwordHash)))return res.status(401).json({message:'Current password is incorrect.'});c.passwordHash=await bcrypt.hash(next,12);c.passwordChangedAt=new Date();await c.save();await CustomerSession.updateMany({customer:c._id,_id:{$ne:req.customerSession._id},revokedAt:null},{$set:{revokedAt:new Date()}});res.json({ok:true,message:'Password changed. Other sessions were signed out.'});});
-app.get('/api/customer/saas-dashboard',requireCustomer,async(req,res)=>{const subs=await SaaSSubscription.find({customer:req.auth.sub}).populate('product','name slug icon').sort({createdAt:-1}).lean();res.json({subscriptions:subs.map(s=>({id:s._id,product:s.product,planCode:s.planCode,status:s.status,currentPeriodEnd:s.currentPeriodEnd,trialEndsAt:s.trialEndsAt,createdAt:s.createdAt}))});});
+app.get('/api/customer/me', requireCustomer, async (req, res) => { const c = await Customer.findById(req.auth.sub).select('-passwordHash'); if (!c) return res.status(404).json({ message: 'Customer not found.' }); res.json({ customer: c }); });
+app.put('/api/customer/me', requireCustomer, async (req, res) => { const c = await Customer.findByIdAndUpdate(req.auth.sub, { $set: { name: req.body.name, phone: req.body.phone, company: req.body.company } }, { new: true }).select('-passwordHash'); res.json({ customer: c }); });
 
 // ---------- Customer portal ----------
 app.get('/api/customer/projects', requireCustomer, async (req, res) => res.json(await Project.find({ customer: req.auth.sub }).sort({ createdAt: -1 })));
@@ -501,13 +418,6 @@ app.get('/api/manager/documents',requireManager,async(req,res)=>res.json(await D
 app.post('/api/manager/documents',requireManager,async(req,res)=>{const d=await Document.create({documentId:id('DOC'),customer:req.body.customer,project:req.body.project||null,name:req.body.name,type:req.body.type||'OTHER',url:req.body.url,version:req.body.version||'1.0',createdBy:req.auth.username});if(d.customer)await Notification.create({recipientType:'customer',recipient:d.customer,title:'New document',message:`${d.name} is available in your account.`,link:'/account'});res.status(201).json(d);});
 
 // ---------- Service catalogue ----------
-// SaaS catalogue manager API. This is intentionally distinct from legacy agency package catalogue.
-async function requireSaasAdmin(req,res,next){try{await requireManager(req,res,()=>{});if(!req.auth)return; if(!['admin','superadmin'].includes(String(req.auth.role||'').toLowerCase()))return res.status(403).json({message:'Administrator role required.'});next();}catch(e){return res.status(401).json({message:'Manager authentication required.'});}}
-function cleanSaasProduct(body={}){const plans=Array.isArray(body.plans)?body.plans.map((x,i)=>({code:String(x.code||x.tier||'').trim().toUpperCase(),tier:String(x.tier||'').trim().toUpperCase(),name:String(x.name||x.tier||'').trim(),description:String(x.description||'').trim(),amount:Number(x.amount),currency:String(x.currency||body.currency||'INR').toUpperCase(),interval:String(x.interval||'MONTH').toUpperCase(),trialDays:Number(x.trialDays??3),features:Array.isArray(x.features)?x.features.map(v=>String(v).trim()).filter(Boolean):[],active:x.active!==false,highlight:!!x.highlight,order:Number(x.order??i)})):[];const faqs=Array.isArray(body.faqs)?body.faqs.map(x=>({question:String(x.question||'').trim(),answer:String(x.answer||'').trim()})).filter(x=>x.question&&x.answer):[];return {code:String(body.code||'').trim().toUpperCase(),slug:String(body.slug||slugify(body.name)).trim().toLowerCase(),name:String(body.name||'').trim(),shortDescription:String(body.shortDescription||'').trim(),description:String(body.description||'').trim(),valueProposition:String(body.valueProposition||'').trim(),audience:String(body.audience||'').trim(),icon:String(body.icon||'✦').slice(0,12),category:String(body.category||'').trim(),status:['DRAFT','ACTIVE','ARCHIVED'].includes(body.status)?body.status:'DRAFT',currency:String(body.currency||'INR').toUpperCase(),plans,faqs,seo:{title:String(body.seo?.title||'').trim(),description:String(body.seo?.description||'').trim()},order:Number(body.order||0)};}
-app.get('/api/manager/saas-products',requireSaasAdmin,async(req,res)=>{const products=await SaaSProduct.find().sort({order:1,updatedAt:-1});res.json({products});});
-app.post('/api/manager/saas-products',requireSaasAdmin,async(req,res)=>{const d=cleanSaasProduct(req.body);if(!d.code||!d.name||!d.slug)return res.status(400).json({message:'Product code, name and slug are required.'});if(d.plans.some(x=>!x.code||!['BASIC','MEDIUM','PREMIUM'].includes(x.tier)||!x.name||!Number.isFinite(x.amount)||x.amount<0||!['MONTH','YEAR'].includes(x.interval)||!Number.isFinite(x.trialDays)||x.trialDays<0||x.trialDays>30))return res.status(400).json({message:'Each plan needs a valid code, Basic/Medium/Premium tier, name, non-negative amount, MONTH/YEAR interval and 0–30 trial days.'});if(new Set(d.plans.map(x=>x.tier)).size!==d.plans.length||new Set(d.plans.map(x=>x.code)).size!==d.plans.length||! /^[A-Z]{3}$/.test(d.currency)||d.plans.some(x=>! /^[A-Z]{3}$/.test(x.currency)))return res.status(400).json({message:'Plan tiers/codes must be unique and currency must be a valid three-letter code.'});if(new Set(d.plans.map(x=>x.tier)).size!==d.plans.length||new Set(d.plans.map(x=>x.code)).size!==d.plans.length||! /^[A-Z]{3}$/.test(d.currency)||d.plans.some(x=>! /^[A-Z]{3}$/.test(x.currency)))return res.status(400).json({message:'Plan tiers/codes must be unique and currency must be a valid three-letter code.'});if(d.status==='ACTIVE'&&!['BASIC','MEDIUM','PREMIUM'].every(t=>d.plans.some(x=>x.tier===t&&x.active)))return res.status(400).json({message:'An active product must have active Basic, Medium and Premium plans.'});try{const product=await SaaSProduct.create(d);res.status(201).json({product});}catch(e){res.status(e.code===11000?409:400).json({message:e.code===11000?'A product with this code or slug already exists.':'Could not save product.'});}});
-app.put('/api/manager/saas-products/:id',requireSaasAdmin,async(req,res)=>{const d=cleanSaasProduct(req.body);if(!d.code||!d.name||!d.slug)return res.status(400).json({message:'Product code, name and slug are required.'});if(d.plans.some(x=>!x.code||!['BASIC','MEDIUM','PREMIUM'].includes(x.tier)||!x.name||!Number.isFinite(x.amount)||x.amount<0||!['MONTH','YEAR'].includes(x.interval)||!Number.isFinite(x.trialDays)||x.trialDays<0||x.trialDays>30))return res.status(400).json({message:'One or more plan definitions are invalid.'});if(new Set(d.plans.map(x=>x.tier)).size!==d.plans.length||new Set(d.plans.map(x=>x.code)).size!==d.plans.length||! /^[A-Z]{3}$/.test(d.currency)||d.plans.some(x=>! /^[A-Z]{3}$/.test(x.currency)))return res.status(400).json({message:'Plan tiers/codes must be unique and currency must be a valid three-letter code.'});if(new Set(d.plans.map(x=>x.tier)).size!==d.plans.length||new Set(d.plans.map(x=>x.code)).size!==d.plans.length||! /^[A-Z]{3}$/.test(d.currency)||d.plans.some(x=>! /^[A-Z]{3}$/.test(x.currency)))return res.status(400).json({message:'Plan tiers/codes must be unique and currency must be a valid three-letter code.'});if(d.status==='ACTIVE'&&!['BASIC','MEDIUM','PREMIUM'].every(t=>d.plans.some(x=>x.tier===t&&x.active)))return res.status(400).json({message:'An active product must have active Basic, Medium and Premium plans.'});try{const product=await SaaSProduct.findByIdAndUpdate(req.params.id,d,{new:true,runValidators:true});if(!product)return res.status(404).json({message:'Product not found.'});res.json({product});}catch(e){res.status(e.code===11000?409:400).json({message:e.code===11000?'A product with this code or slug already exists.':'Could not update product.'});}});
-app.delete('/api/manager/saas-products/:id',requireSaasAdmin,async(req,res)=>{const product=await SaaSProduct.findByIdAndUpdate(req.params.id,{status:'ARCHIVED'},{new:true});if(!product)return res.status(404).json({message:'Product not found.'});res.json({ok:true,product});});
 app.get('/api/manager/catalogue', requireManager, async (req,res)=>res.json(await ServicePackage.find().sort({order:1,createdAt:-1})));
 app.post('/api/manager/catalogue', requireManager, async (req,res)=>{ const d={...req.body,price:Number(req.body.price||0),bookingAmount:Number(req.body.bookingAmount||499),order:Number(req.body.order||0),active:req.body.active!==false,billingType:req.body.billingType||'ONE_TIME',startingAt:!!req.body.startingAt,features:cleanArray(req.body.features)}; if(!d.code||!d.name||d.price<0)return res.status(400).json({message:'Code, name and valid price are required.'}); res.status(201).json(await ServicePackage.create(d)); });
 app.put('/api/manager/catalogue/:id', requireManager, async (req,res)=>{ const d={...req.body}; if(d.price!==undefined)d.price=Number(d.price); if(d.order!==undefined)d.order=Number(d.order); if(d.features!==undefined)d.features=cleanArray(d.features); if(d.active!==undefined)d.active=d.active==='true'||d.active===true; if(d.startingAt!==undefined)d.startingAt=d.startingAt==='true'||d.startingAt===true; const x=await ServicePackage.findByIdAndUpdate(req.params.id,d,{new:true}); if(!x)return res.status(404).json({message:'Catalogue item not found.'}); res.json(x); });
@@ -525,37 +435,10 @@ app.get('/api/manager/site', requireManager, async (req, res) => res.json(await 
 app.put('/api/manager/site', requireManager, async (req, res) => res.json(await Site.findOneAndUpdate({ key: 'main' }, { $set: { ...req.body, key: 'main' } }, { upsert: true, new: true })));
 
 // ---------- Error / start ----------
-app.use('/api', notFound);
-app.use(errorHandler);
-
-let httpServer;
-let shuttingDown = false;
-async function start() {
-  await connectDatabase(CONFIG.mongoUri);
-  httpServer = app.listen(PORT, '0.0.0.0', () => logger.info('server_started', { port: PORT }));
-}
-async function shutdown(signal) {
-  if (shuttingDown) return;
-  shuttingDown = true;
-  logger.info('server_shutdown_started', { signal });
-  if (httpServer) {
-    await new Promise((resolve) => httpServer.close(resolve));
-  }
-  try {
-    await disconnectDatabase();
-    process.exit(0);
-  } catch (error) {
-    logger.error('server_shutdown_failed', { errorName: error.name, message: error.message });
-    process.exit(1);
-  }
-}
-process.on('SIGTERM', () => void shutdown('SIGTERM'));
-process.on('SIGINT', () => void shutdown('SIGINT'));
-
-if (require.main === module) {
-  start().catch((error) => {
-    logger.error('server_start_failed', { errorName: error.name, message: error.message });
-    process.exit(1);
-  });
-}
-module.exports = { app, start, shutdown };
+app.use('/api', (req, res) => res.status(404).json({ message: 'API route not found.' }));
+app.use((err, req, res, next) => {
+  console.error('Unhandled request error:', err.message);
+  if (res.headersSent) return next(err);
+  res.status(500).json({ message: 'Something went wrong on the server.' });
+});
+app.listen(PORT, '0.0.0.0', () => console.log(`Creatarsh server running on 0.0.0.0:${PORT}`));

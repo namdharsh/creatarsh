@@ -536,3 +536,48 @@ body{background:linear-gradient(180deg,#fff 0%,#fbfdfc 55%,#f7fbf9 100%);color:v
   .outcome-card,.card,.sales-package,.process-step{box-shadow:0 7px 22px rgba(18,53,34,.05)}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
+
+
+
+/* Creatarsh premium light design system */
+:root{--bg:#f7f7f5;--panel:#fff;--panel2:#f1f2f1;--line:#e2e4e3;--text:#191c20;--muted:#707b84;--green:#20252b;--green2:#343d46;--max:1200px}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif}
+.nav{background:rgba(250,250,249,.92);border-color:#e4e5e4}
+.links{color:#626b73}.links a:hover,.links a.active{color:#171b20}
+.logo{color:#171b20}
+.btn{color:#20252b;border-color:#d9dddf;background:#fff}
+.btn.primary{background:#20252b;border-color:#20252b;color:#fff}
+.btn.primary:hover{background:#39434c;border-color:#39434c}
+.eyebrow{color:#71808b}
+.section{background:transparent}
+.section-head h2,.sales-copy h1,.page-head h1,.hero h1{color:#191c20}
+.section-head p,.muted,.hero-lead,.sales-copy>p{color:#707b84}
+.card,.outcome-card,.before-after>div,.service-card,.package-card,.faq-item,.testimonial-card{background:#fff;border:1px solid #e5e7e6;box-shadow:0 8px 28px rgba(25,30,35,.035)}
+.card:hover,.outcome-card:hover{border-color:#c8cdd0;box-shadow:0 18px 44px rgba(25,30,35,.07)}
+.card p,.outcome-card p,.before-after li{color:#68737b}
+.sales-hero{background:transparent;isolation:isolate}
+.sales-hero:before{content:"";position:absolute;z-index:-1;inset:0 3% 0;background-image:linear-gradient(rgba(247,247,245,var(--hero-banner-darkness,.18)),rgba(247,247,245,var(--hero-banner-darkness,.18))),var(--hero-banner-image,none);background-position:center;background-size:cover;opacity:var(--hero-banner-opacity,0);filter:grayscale(.35) brightness(.78);mask-image:linear-gradient(90deg,transparent 0%,#000 13%,#000 87%,transparent 100%);pointer-events:none;border-radius:34px}
+.sales-copy h1 span,.accent,.final-cta h2 span{color:#71808b}
+.hero-lead{color:#69747d}
+.trust-line{color:#74808a}
+.proof-strip{background:#f0f1ef;border-color:#e5e6e4}
+.proof-grid span{color:#56616a}
+.banner-section{padding:28px 0 18px}
+.banner-slider{background:#e9ebeb;border:1px solid #e0e3e3;box-shadow:none;border-radius:24px}
+.banner-slide{background:#e8ebeb}
+.banner-overlay{background:linear-gradient(90deg,rgba(18,23,27,.82),rgba(18,23,27,.48) 55%,rgba(18,23,27,.08))}
+.banner-content h2{color:#fff}
+.banner-content p{color:#edf0f1}
+.banner-arrow{background:rgba(25,30,35,.6);color:#fff}
+.banner-arrow:hover{border-color:#fff;color:#fff}
+.banner-dots button{background:rgba(255,255,255,.45)}
+.banner-dots button.active{background:#fff}
+input,textarea,select{background:#fff!important;color:#20252b!important;border-color:#dfe2e2!important}
+input::placeholder,textarea::placeholder{color:#9aa2a8}
+footer,.footer{background:#eef0ef;color:#59636b;border-color:#e1e4e3}
+hr{border-color:#e2e4e3}
+@media(max-width:760px){.sales-hero{padding:70px 0 48px}.sales-hero:before{inset:0 0;border-radius:22px;mask-image:linear-gradient(180deg,transparent,#000 12%,#000 88%,transparent)}.banner-content{padding:32px 28px;width:90%}.banner-slide{height:360px}}
+
+.page-head{position:relative;isolation:isolate;overflow:hidden}
+.page-head:before{content:"";position:absolute;z-index:-1;inset:0 3%;border-radius:30px;background-image:linear-gradient(rgba(247,247,245,var(--page-banner-darkness,.18)),rgba(247,247,245,var(--page-banner-darkness,.18))),var(--page-banner-image,none);background-position:center;background-size:cover;opacity:var(--page-banner-opacity,0);filter:grayscale(.35) brightness(.78);mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent);pointer-events:none}
+@media(max-width:760px){.page-head:before{inset:0;border-radius:20px;mask-image:linear-gradient(180deg,transparent,#000 12%,#000 88%,transparent)}}

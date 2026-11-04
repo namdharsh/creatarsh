@@ -1,39 +1,68 @@
-# Creatarsh — Existing Project (Consolidated)
+# Creatarsh — Agency System
 
-Creatarsh's existing website, customer identity, Manager Studio, SaaS catalogue, API and Flutter applications. This update consolidates setup and server lifecycle without replacing approved pages or redesigning the site.
+Production-ready Creatarsh customer website + Manager Studio OS backed by MongoDB.
 
-## Local setup (one-time)
-1. Install Node.js 20+ and MongoDB Community Server (or use a development MongoDB Atlas URI).
-2. Open this project folder in VS Code.
-3. Copy `server/.env.example` to `server/.env`.
-4. Set `MONGODB_URI` to your local development database. Change the local manager password before using the manager panel.
-5. From the project root run `npm install`.
-6. Run `npm test` to execute the existing automated tests.
-7. Run `npm start` to start the API and website.
+## Included
+- Customer website: Home, Services, Work, About, Contact, FAQ
+- Customer registration/login and account portal
+- Projects, quotations, invoices, payments and notifications
+- Manager dashboard, CRM/leads, customers and project management
+- Website CMS: services, portfolio, testimonials, FAQ, banners and site content
+- Security headers, API rate limiting, JWT authentication and CORS controls
+- SEO metadata, canonical URLs, robots.txt, sitemap.xml and Organization schema
+- Render deployment configuration in `render.yaml`
 
-Open:
-- Website: http://localhost:5000/
-- Manager: http://localhost:5000/manager/
-- Health: http://localhost:5000/health
-- Readiness: http://localhost:5000/ready
+## Run locally
+```bash
+cd server
+npm install
+npm start
+```
 
-Development auto-reload: `npm run dev`.
+Open `http://localhost:5000/` and `http://localhost:5000/manager/`.
 
-## Environment and secrets
-Only `server/.env.example` belongs in source control. Keep `server/.env` private. Production must use unique random `MANAGER_JWT_SECRET` and `CUSTOMER_JWT_SECRET` values of at least 32 characters, a production MongoDB URI, and exact CORS origins. Never reuse the local example secrets in production.
+Create `server/.env` from `server/.env.example`. Never commit `.env`.
 
-## Existing modules
-- Public website and CMS-backed content
-- Customer registration, login, account, verification and recovery pages
-- Manager Studio and SaaS catalogue
-- API, MongoDB models, authentication and business workflows
-- Flutter customer, business and admin applications
+## Production / Render
+Use the repository root as the Render service root. `render.yaml` contains the build/start commands and health check.
 
-## Verification
-`npm test` runs the Node built-in test suite. `npm run check:syntax` checks JavaScript syntax. `npm run verify` runs both. Tests that require external services or credentials must be called out separately; do not interpret static tests as full end-to-end production verification.
+Required environment variables:
+- `MONGODB_URI`
+- `MANAGER_JWT_SECRET`
+- `CUSTOMER_JWT_SECRET`
+- `MANAGER_INITIAL_USERNAME`
+- `MANAGER_INITIAL_PASSWORD`
+- `CORS_ORIGINS` when the frontend is hosted separately
 
-## Deployment
-No deployment or production environment is changed by this project update. Review `DEPLOYMENT_CHECKLIST.md` before any future deployment.
+After the first manager login, use a strong password and rotate any credentials that may previously have been exposed.
 
-## Project cleanup
-See [Project Cleanup](docs/PROJECT_CLEANUP.md) for retained/removed files and compatibility reasoning. CI runs `npm run verify` on pushes and pull requests.
+## Important
+If the old project ZIP or Git history ever contained a real `.env`, rotate the MongoDB password and JWT secrets before production deployment.
+
+## Important: MongoDB-driven public website
+
+The public Creatarsh site does not use hardcoded service/portfolio/banner content. MongoDB is the source of truth for:
+- Services
+- Portfolio projects
+- Homepage banners
+- Testimonials
+- FAQs
+- Website CMS content
+
+Manage these from `/manager/` after connecting the API to MongoDB with `MONGODB_URI`.
+
+The public site intentionally does not fall back to hardcoded service/portfolio data when MongoDB is unavailable. This prevents stale content from appearing and makes the Manager CMS the single source of truth.
+
+For production, configure `MONGODB_URI`, `MANAGER_JWT_SECRET`, `CUSTOMER_JWT_SECRET`, and the initial manager credentials in the hosting provider's environment settings. Never commit `.env` or MongoDB credentials to GitHub.
+
+## Sell-ready deployment checklist
+Before accepting real customer payments:
+1. Set `MONGODB_URI`, `MANAGER_JWT_SECRET`, `CUSTOMER_JWT_SECRET`, manager credentials and `CORS_ORIGINS` in Render.
+2. Set `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` and `RAZORPAY_WEBHOOK_SECRET` when payments are enabled.
+3. Set `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, and `RAZORPAY_WEBHOOK_SECRET` in Render. The package booking flow enables Razorpay Checkout when the key ID and secret are present; it charges the package's configured `bookingAmount` as the booking payment, not necessarily the full package price. Configure the webhook URL as `https://creatarsh.in/api/webhooks/razorpay` (or your actual API origin) and subscribe to `payment.captured`.
+4. Test: Create Account → Login → Buy → Terms acceptance → Privacy acknowledgement → Razorpay Test Mode booking payment → server-side signature and capture verification → order status in manager/customer views. Verify the remaining balance and scope in the approved proposal before beginning work.
+5. Test support tickets, contracts, privacy requests, manager workflow and mobile layout.
+6. Never upload `server/.env` or commit credentials. Rotate any credential that was ever exposed.
+
+## Authentication fix
+The Account page initializes the client authentication modal from `customer/js/site.js` after its dynamic login link is rendered. This avoids the previous event-order bug where the modal script ran before the Client Login link existed.
