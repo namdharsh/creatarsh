@@ -1,6 +1,6 @@
-# Creatarsh — Software Products & Subscription Storefront
+# Creatarsh — Digital Solutions Company & Product Platform
 
-Creatarsh is presented as a software products and technology company. The customer website is a product catalogue and plan storefront; the Manager is the control centre for products, plans, banners and public website copy.
+Creatarsh is presented as a digital solutions company offering websites, e-commerce, custom software, mobile apps, branding, design, video and digital marketing. The website also retains the existing digital-tools/product platform, customer accounts and Manager CMS.
 
 ## Included
 - Customer storefront with product discovery, plan comparison, account registration/login and support pages.
@@ -55,3 +55,6 @@ Server-backed customer storefront content (hero copy, products, plans and manage
 - Never commit `.env`, API credentials, database connection strings, JWT secrets or payment secrets. Configure these through your deployment environment and use `server/.env.example` only as a template.
 
 Run `node tests/digital-tools-smoke.js` from the repository root to check the Digital Tools integration and ensure no real server `.env` is present.
+
+## Agency website refresh
+The public homepage and Services, About, Contact and FAQ pages now use a consistent digital-solutions positioning. The existing customer account, manager CMS, API integrations, digital-tools catalogue, package/payment routes and legal pages have been retained. Service categories and example solution panels are capability descriptions, not fabricated client testimonials or completed-project claims.
