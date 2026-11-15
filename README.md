@@ -34,3 +34,11 @@ The existing `render.yaml` is retained. Configure secrets in the hosting provide
 - The existing Manager and API have not been redesigned or removed.
 - Razorpay and other existing payment code is retained, but the corporate website does not expose checkout or subscriptions.
 - The six division subdomains are links/placeholders until each division website is separately deployed and DNS is configured.
+
+## Website CMS / Manager control centre
+
+Open `/manager/` and sign in with the existing Manager account. The **Website → Website Control Centre** section now manages the corporate homepage through the authenticated `/api/manager/site` API and MongoDB `Site` document.
+
+Controls include hero and section copy, logo URL/path, navigation links, six division cards, product cards, capability cards, principles, contact/social links, glass theme tokens, SEO title/description and homepage section visibility. Repeated content collections are editable as JSON arrays; the Manager UI displays starter examples if an older database record does not yet contain them. Saving publishes the configuration to `/api/public/content`, which the public homepage reads on load. The website and Manager use a translucent glassmorphic visual system.
+
+Image/logo files should be hosted at an HTTPS URL or an existing site-relative asset path (for example `/assets/creatarsh-logo.png`). Do not put secrets in CMS fields. A database connection is required to save or load live CMS content; the static homepage remains as a fallback if the CMS request is unavailable.
