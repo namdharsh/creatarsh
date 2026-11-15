@@ -7,8 +7,7 @@
   },
   "scripts": {
     "start": "node server/server.js",
-    "dev": "node --watch server/server.js",
-    "test:tools": "node tests/digital-tools-smoke.js"
+    "dev": "node --watch server/server.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

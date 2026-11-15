@@ -1,60 +1,36 @@
-# Creatarsh — Digital Solutions Company & Product Platform
+# Creatarsh — Corporate Website & Existing Platform Foundation
 
-Creatarsh is presented as a digital solutions company offering websites, e-commerce, custom software, mobile apps, branding, design, video and digital marketing. The website also retains the existing digital-tools/product platform, customer accounts and Manager CMS.
+The public root website (`/`) is now a focused corporate overview for the current Creatarsh plan. It explains the parent brand, its six divisions, selected products and company direction. It is intentionally not a services storefront, customer portal or product dashboard.
 
-## Included
-- Customer storefront with product discovery, plan comparison, account registration/login and support pages.
-- Manager CMS for Products & Tools, Plans & Pricing, Homepage Banners and Storefront Content.
-- Existing customer account, orders, invoices, payments, support and document modules retained.
-- MongoDB-backed content and product pricing APIs.
-- Existing security middleware, manager/customer authentication, Razorpay integration hooks and Render configuration.
+## Public website
+- Single-page corporate overview at `/`.
+- Sections: company introduction, six divisions, selected products, principles and corporate enquiry form.
+- Division links point to the planned subdomains: `tools`, `platforms`, `softwares`, `ai`, `commerce` and `studio`.
+- Product statuses are labelled conservatively (existing product, in development, planned).
+- Legacy public page URLs redirect to the current homepage.
+
+## Retained infrastructure
+- Existing Node.js/Express API and MongoDB integration are retained.
+- Existing private Manager interface remains at `/manager/`.
+- Existing API routes, security middleware, health endpoint, payment integration code and Render configuration are retained for later phases.
+- The corporate enquiry form uses the existing `POST /api/public/leads` endpoint. It requires a working MongoDB connection.
+- The corporate homepage does not require customer login, checkout, pricing catalogue, portfolio CMS or product-storefront features.
 
 ## Run locally
 ```bash
 cd server
 npm install
+cp .env.example .env
+# Configure MONGODB_URI and strong manager/customer JWT secrets in server/.env
 npm start
 ```
-Open `http://localhost:5000/` and `http://localhost:5000/manager/`. Create `server/.env` from `server/.env.example`; never commit secrets.
+Open `http://localhost:5000/`. Manager: `http://localhost:5000/manager/`. Health: `http://localhost:5000/api/health`.
 
-## Manage the storefront
-1. Sign in to `/manager/`.
-2. Open **Products & Tools** to add/edit product names, categories, descriptions, capabilities, features, icons, and visibility.
-3. Open **Plans & Pricing** to set prices, monthly/one-time billing labels, plan features, order and visibility.
-4. Open **Banners & Hero** to manage banner images, copy, CTA, order, opacity and overlay.
-5. Open **Storefront Content** to edit hero text, product/pricing section headings, support details and footer text.
+## Deployment
+The existing `render.yaml` is retained. Configure secrets in the hosting provider's environment settings. Do not commit `server/.env`, API credentials, database connection strings, JWT secrets or payment secrets.
 
-The public website reads product content from the `services` CMS collection and plans from the existing `/api/public/pricing` API.
-
-## Payment and subscription readiness — important
-The existing payment implementation supports a Razorpay booking/payment flow and records product/package orders. It does **not** yet implement a complete recurring subscription lifecycle (Razorpay subscriptions, automatic renewals, dunning, plan upgrades/downgrades, cancellation and entitlement enforcement). Monthly plan labels are catalogue metadata only until that billing lifecycle is implemented and tested. Do not advertise automatic recurring billing or accept live subscription payments until that work is complete.
-
-Before production:
-- Configure MongoDB, manager/customer JWT secrets and initial manager credentials.
-- Configure Razorpay keys and webhook secrets only after completing end-to-end test-mode verification.
-- Test registration, login, order creation, payment verification, manager order visibility and access controls.
-- Review legal pages and publish accurate plan limits, taxes, renewals and cancellation terms.
-- Never include `.env` or real credentials in the project archive.
-
-## Validation
-JavaScript syntax checks pass for the customer website, manager interface and Node server. Run the server test suite in your own environment before deployment.
-
-## Skeleton loading
-Server-backed customer storefront content (hero copy, products, plans and managed banner images) and Manager screens use animated skeleton placeholders while requests are in flight. Account dashboard and FAQ areas also retain their skeleton placeholders. Reduced-motion preferences disable the shimmer animation.
-
-
-## Digital Tools catalogue and Resume Studio
-- Public catalogue: `/tools` (the **Digital Tools** identity page).
-- Resume Studio: `/tools/resume/`; its separate template gallery is `/tools/resume/templates.html`.
-- Tool cards are read from MongoDB through `GET /api/public/tools`; only active records marked `isDigitalTool` are returned.
-- Manager: sign in at `/manager/` and open **Digital Tools** to create, edit and show/hide tool cards. Hiding a tool is reversible and does not delete its catalogue record. The same CMS collection powers the existing Products & Services section.
-- Tool launch URLs are restricted server-side to safe internal `/tools/...` paths. The Resume Studio card is inserted on first successful MongoDB connection and is not overwritten on later restarts, so manager edits persist.
-- If MongoDB is not configured or unavailable, the catalogue shows a retry/error state instead of silently showing stale hard-coded cards.
-
-## Repository hygiene
-- Never commit `.env`, API credentials, database connection strings, JWT secrets or payment secrets. Configure these through your deployment environment and use `server/.env.example` only as a template.
-
-Run `node tests/digital-tools-smoke.js` from the repository root to check the Digital Tools integration and ensure no real server `.env` is present.
-
-## Agency website refresh
-The public homepage and Services, About, Contact and FAQ pages now use a consistent digital-solutions positioning. The existing customer account, manager CMS, API integrations, digital-tools catalogue, package/payment routes and legal pages have been retained. Service categories and example solution panels are capability descriptions, not fabricated client testimonials or completed-project claims.
+## Important scope notes
+- Legacy customer-facing HTML pages remain in the repository for reference and for any future migration, but are no longer served as public pages from their old routes.
+- The existing Manager and API have not been redesigned or removed.
+- Razorpay and other existing payment code is retained, but the corporate website does not expose checkout or subscriptions.
+- The six division subdomains are links/placeholders until each division website is separately deployed and DNS is configured.

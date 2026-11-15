@@ -38,51 +38,29 @@ app.use(cors({ origin(origin, callback) {
 app.use(express.json({ limit: '8mb', verify: (req, res, buf) => { if (req.originalUrl === '/api/webhooks/razorpay') req.rawBody = Buffer.from(buf); } }));
 app.use(express.urlencoded({ extended: true, limit: '8mb' }));
 
-// Serve the customer website and manager assets from the same Express service.
-// This keeps CSS/JS/images available when the API and web app are deployed together.
-app.use('/customer', express.static(CUSTOMER_DIR, { extensions: ['html'] }));
-// Root aliases keep the same customer HTML files working when Express serves the site at /.
+// Serve the current corporate website and keep the existing Manager/API infrastructure.
 app.use('/assets', express.static(path.join(CUSTOMER_DIR, 'assets')));
 app.use('/css', express.static(path.join(CUSTOMER_DIR, 'css')));
 app.use('/js', express.static(path.join(CUSTOMER_DIR, 'js')));
-app.get('/manifest.webmanifest', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'manifest.webmanifest')));
-app.get('/sw.js', (req, res) => { res.set('Content-Type','application/javascript'); res.sendFile(path.join(CUSTOMER_DIR, 'sw.js')); });
-app.use('/manager', express.static(MANAGER_DIR, { extensions: ['html'] }));
-app.use('/tools/resume', express.static(path.join(CUSTOMER_DIR, 'tools', 'resume'), { extensions: ['html'] }));
-
 app.get('/robots.txt', (req, res) => res.sendFile(path.join(ROOT, 'robots.txt')));
 app.get('/sitemap.xml', (req, res) => res.sendFile(path.join(ROOT, 'sitemap.xml')));
 app.get('/', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'index.html')));
-app.get('/login', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'login.html')));
-app.get('/register', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'register.html')));
-app.get('/account', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'account.html')));
-app.get('/services', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'services.html')));
-// Service detail pages: support direct navigation, refreshes and the plural alias.
-app.get('/service', (req, res) => res.redirect('/services'));
-app.get(['/service/:slug', '/services/:slug'], (req, res) => res.redirect('/services'));
-app.get('/tools', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'tools', 'index.html')));
-app.get('/tools/resume', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'tools', 'resume', 'index.html')));
-app.get('/work', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'work.html')));
-app.get('/portfolio', (req, res) => res.redirect('/services'));
-app.get('/portfolio/:slug', (req, res) => res.redirect('/services'));
-app.get('/about', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'about.html')));
-app.get('/contact', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'contact.html')));
-app.get('/support', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'support.html')));
-app.get('/grievance', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'grievance.html')));
-app.get('/faq', (req, res) => res.sendFile(path.join(CUSTOMER_DIR, 'faq.html')));
-app.get('/buy', (req,res)=>res.sendFile(path.join(CUSTOMER_DIR,'buy.html')));
-app.get('/packages', (req,res)=>res.redirect('/buy'));
-app.get('/packages/:code', (req,res)=>res.redirect('/buy?package='+encodeURIComponent(req.params.code)));
-app.get('/start-project', (req,res)=>res.redirect('/buy'));
-app.get('/legal/terms', (req,res)=>res.sendFile(path.join(CUSTOMER_DIR,'legal/terms.html')));
-app.get('/legal/privacy', (req,res)=>res.sendFile(path.join(CUSTOMER_DIR,'legal/privacy.html')));
-app.get('/legal/refunds', (req,res)=>res.sendFile(path.join(CUSTOMER_DIR,'legal/refunds.html')));
-app.get('/legal/cookies', (req,res)=>res.sendFile(path.join(CUSTOMER_DIR,'legal/cookies.html')));
-app.get('/legal/ai', (req,res)=>res.sendFile(path.join(CUSTOMER_DIR,'legal/ai.html')));
-app.get('/legal/service-agreement', (req,res)=>res.sendFile(path.join(CUSTOMER_DIR,'legal/service-agreement.html')));
-app.get('/legal/ip', (req,res)=>res.sendFile(path.join(CUSTOMER_DIR,'legal/ip.html')));
-app.get('/legal/acceptable-use', (req,res)=>res.sendFile(path.join(CUSTOMER_DIR,'legal/acceptable-use.html')));
+
+// The public site is currently a corporate overview only. Legacy customer
+// storefront/account/service URLs return visitors to the current homepage.
+// Existing API endpoints and the private Manager remain available for future phases.
+app.get([
+  '/customer', '/login', '/register', '/account', '/services', '/service',
+  '/service/:slug', '/services/:slug', '/tools', '/tools/:slug',
+  '/work', '/portfolio', '/portfolio/:slug', '/about', '/contact',
+  '/support', '/grievance', '/faq', '/buy', '/packages', '/packages/:code',
+  '/start-project', '/legal/terms', '/legal/privacy', '/legal/refunds',
+  '/legal/cookies', '/legal/ai', '/legal/service-agreement',
+  '/legal/ip', '/legal/acceptable-use'
+], (req, res) => res.redirect(302, '/#' + (req.path === '/contact' ? 'contact' : 'ecosystem')));
+
 app.get('/manager', (req, res) => res.redirect('/manager/'));
+app.use('/manager', express.static(MANAGER_DIR, { extensions: ['html'] }));
 
 // Generous production limits prevent a small agency team/page load from locking itself out.
 
