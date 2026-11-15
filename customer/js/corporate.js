@@ -27,7 +27,7 @@
     if(s.logoUrl){document.querySelectorAll('.brand-logo,.art-core img,.roadmap-center img').forEach(img=>img.src=safeUrl(s.logoUrl));}
     const hero=document.querySelector('.hero h1');if(hero&&s.heroTitle){const parts=s.heroTitle.split('\n');hero.innerHTML=parts.map((x,i)=>i===parts.length-1?`<em>${x.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}</em>`:x.replace(/[&<>"']/g,'')).join('<br>');}
     setText('.hero-description',s.heroText);setText('.hero .eyebrow',s.heroEyebrow);setText('.intro-content .body-copy',s.aboutText);setText('.ecosystem .section-heading h2',s.ecosystemTitle);setText('.ecosystem .section-note',s.ecosystemText);setText('.capabilities .section-heading h2',s.capabilitiesTitle);setText('.capabilities .section-note',s.capabilitiesText);setText('.roadmap-heading h2',s.roadmapTitle);setText('.roadmap-heading>p:last-child',s.roadmapText);setText('.principles-inner>div:first-child h2',s.principlesTitle);setText('.contact-panel h2',s.contactTitle);setText('.contact-copy',s.contactText);setText('.footer-description',s.footerText);
-    renderCollection('.division-grid',s.divisions,(x,i)=>`<a class="division-card" href="${safeUrl(x.url||'#')}" rel="noopener"><span class="division-no">${String(i+1).padStart(2,'0')}</span><span class="division-icon">${String(x.icon||'✦').slice(0,8)}</span><h3>${String(x.name||'').replace(/[&<>]/g,'')}</h3><p>${String(x.description||'').replace(/[&<>]/g,'')}</p><span class="division-foot">${String(x.slug||x.name||'').toUpperCase()} <b>↗</b></span></a>`);
+    renderCollection('.division-grid',s.divisions,(x,i)=>`<a id="division-${String(x.slug||x.name||'').toLowerCase().replace(/[^a-z0-9]+/g,'-')}" class="division-card" href="${safeUrl(x.url||'#')}" rel="noopener"><span class="division-no">${String(i+1).padStart(2,'0')}</span><span class="division-icon">${String(x.icon||'✦').slice(0,8)}</span><h3>${String(x.name||'').replace(/[&<>]/g,'')}</h3><p>${String(x.description||'').replace(/[&<>]/g,'')}</p><span class="division-foot">${String(x.slug||x.name||'').toUpperCase()} <b>↗</b></span></a>`);
     renderCollection('.product-list',s.products,(x,i)=>`<article class="product-row"><div class="product-number">${String(i+1).padStart(2,'0')}</div><div class="product-main"><span class="product-category">${String(x.category||'PRODUCT').replace(/[&<>]/g,'')}</span><h3>${String(x.name||'').replace(/[&<>]/g,'')}</h3><p>${String(x.description||'').replace(/[&<>]/g,'')}</p></div><span class="status status-progress">${String(x.status||'In progress').replace(/[&<>]/g,'')}</span></article>`);
     renderCollection('.capability-grid',s.capabilities,(x)=>`<article class="capability-card cap-${String(x.tone||'violet').replace(/[^a-z-]/g,'')}"><span class="cap-kicker">${String(x.tag||'EXPLORE').replace(/[&<>]/g,'')}</span><div class="cap-graphic"><b>${String(x.icon||'✦').replace(/[&<>]/g,'')}</b><i></i><i></i><i></i></div><h3>${String(x.title||'').replace(/[&<>]/g,'')}</h3><p>${String(x.description||'').replace(/[&<>]/g,'')}</p><span class="cap-link">EXPLORE / BUILD / EVOLVE</span></article>`);
     renderCollection('.principle-list',s.principles,(x,i)=>`<div><span>${String(i+1).padStart(2,'0')}</span><section><h3>${String(x.title||'').replace(/[&<>]/g,'')}</h3><p>${String(x.description||'').replace(/[&<>]/g,'')}</p></section></div>`);
@@ -37,6 +37,24 @@
     if(s.navigation?.length){const nav=document.querySelector('.nav');if(nav)nav.innerHTML=s.navigation.map(n=>`<a href="${safeUrl(n.url||'#')}">${String(n.label||'').replace(/[&<>]/g,'')}</a>`).join('');}
     if(s.email){document.querySelectorAll('a[href^="mailto:"]').forEach(a=>a.href=`mailto:${s.email}`)}
   }).catch(()=>{});
+
+
+  // Creatarsh motion system: progressive enhancement with reduced-motion support.
+  const motionReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!motionReduced) {
+    const progress = document.createElement('div'); progress.className='motion-progress'; document.body.appendChild(progress);
+    const header=document.querySelector('.site-header'); let scrollTick=false;
+    const updateScroll=()=>{const max=document.documentElement.scrollHeight-window.innerHeight;progress.style.transform=`scaleX(${max>0?window.scrollY/max:0})`;if(header)header.classList.toggle('is-scrolled',window.scrollY>24);scrollTick=false;};
+    window.addEventListener('scroll',()=>{if(!scrollTick){requestAnimationFrame(updateScroll);scrollTick=true;}},{passive:true});updateScroll();
+    const glow=document.createElement('div');glow.className='motion-cursor-glow';document.body.appendChild(glow);
+    if(window.matchMedia('(pointer:fine)').matches){window.addEventListener('pointermove',e=>{glow.style.left=`${e.clientX}px`;glow.style.top=`${e.clientY}px`;glow.style.opacity='.8';},{passive:true});document.addEventListener('pointerleave',()=>glow.style.opacity='0');}
+    const selectors=['.ecosystem .section-heading','.division-card','.products .section-heading','.product-row','.about-inner > *','.contact-panel > *','.footer-main > *'].join(',');
+    const seen=new WeakSet();let observer;
+    if('IntersectionObserver'in window){observer=new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting){entry.target.classList.add('is-visible');observer.unobserve(entry.target);}}),{threshold:.12,rootMargin:'0px 0px -35px 0px'});}
+    const prepare=scope=>{if(!scope||!scope.querySelectorAll)return;scope.querySelectorAll(selectors).forEach(el=>{if(seen.has(el))return;seen.add(el);el.classList.add('motion-reveal');const siblings=el.parentElement?[...el.parentElement.children].filter(x=>x.matches&&x.matches(selectors)):[];el.style.setProperty('--motion-delay',`${Math.min(Math.max(0,siblings.indexOf(el)),7)*75}ms`);if(el.matches('.about-inner'))el.classList.add('motion-left');if(observer)observer.observe(el);else el.classList.add('is-visible');});};
+    prepare(document);
+    new MutationObserver(records=>records.forEach(r=>r.addedNodes.forEach(n=>{if(n.nodeType===1)prepare(n);}))).observe(document.querySelector('main')||document.body,{childList:true,subtree:true});
+  }
 
   const year = document.getElementById('year');
   if (year) year.textContent = new Date().getFullYear();
