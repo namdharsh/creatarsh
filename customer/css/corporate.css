@@ -169,3 +169,31 @@ body.dark-ecosystem{background:#f3f6f1;color:#14231c}
  .dark-ecosystem .about-strip{padding:65px 0}
 }
 @media(prefers-reduced-motion:reduce){.dark-ecosystem .art-ring,.dark-ecosystem .art-core,.dark-ecosystem .orbit-label{animation:none!important}}
+
+
+/* FIX: keep STUDIO orbit tag compact; prevent accidental full-width stretching */
+.dark-ecosystem .hero-art > .orbit-label.label-studio{
+  position:absolute !important;
+  display:inline-flex !important;
+  width:max-content !important;
+  min-width:0 !important;
+  max-width:max-content !important;
+  flex:0 0 auto !important;
+  inset-inline-start:0 !important;
+  inset-inline-end:auto !important;
+  top:80px !important;
+  bottom:auto !important;
+  padding:9px 13px !important;
+  white-space:nowrap !important;
+  align-items:center !important;
+  justify-content:center !important;
+  transform:none;
+}
+@media(max-width:650px){
+  .dark-ecosystem .hero-art > .orbit-label.label-studio{
+    inset-inline-start:-4px !important;
+    inset-inline-end:auto !important;
+    top:65px !important;
+    bottom:auto !important;
+  }
+}
